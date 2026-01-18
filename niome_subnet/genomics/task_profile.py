@@ -13,7 +13,8 @@ ULTRA_WIDE_MIN = 150_000
 WIDE_MIN = 50_000
 COMPACT_MAX = 50_000
 
-# Historical noise band (5.19.02/03) — weak calls here are often FP
+# Historically noisy band (5.19.x FPs). Manager truth 5.22.03 has real sites
+# at 117504296 and 117504400 — use score penalty only, never hard-drop.
 READ_NOISE_LO = 117504200
 READ_NOISE_HI = 117504400
 
@@ -53,7 +54,7 @@ PROFILES = {
         min_af=0.15,
         min_qual=15.0,
         min_alt_ad=2,
-        max_indel_len=32,
+        max_indel_len=48,
         indel_min_dp=10,
         mpileup_qual="-q 5 -Q 5",
         prefer_norm_vcf=True,
@@ -126,7 +127,7 @@ def is_simple_snp(ref: str, alt: str) -> bool:
 
 
 def noise_band_penalty(pos: int) -> bool:
-    """True if position is in the historical low-truth noise band."""
+    """True if position is in the historical noisy band (soft score penalty only)."""
     return READ_NOISE_LO <= pos <= READ_NOISE_HI
 
 

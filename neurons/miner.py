@@ -48,7 +48,7 @@ class Miner(BaseMinerNeuron):
 
     @staticmethod
     def _cache_key(task) -> str:
-        return f"{task.task_id}:{task.genome_context.region}"
+        return f"{task.task_id}:{task.genome_context.region}:{READ_CALLING_REV}"
 
     def _cache_get(self, task) -> Optional[_TaskResult]:
         key = self._cache_key(task)

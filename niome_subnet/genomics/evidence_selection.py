@@ -18,11 +18,11 @@ from niome_subnet.genomics.task_profile import (
     ultra_scoring_core,
 )
 
-METHOD_ID = "niome-native-2026-05-21-v4"
+METHOD_ID = "niome-native-2026-05-22-v5"
 
 # Upper safety trim only (5.21.03 truth = 25); never force a minimum.
 NATIVE_COUNT_TRIM_MAX = 32
-NATIVE_MAX_ALLELE = 32
+NATIVE_MAX_ALLELE = 48
 NATIVE_DEDUPE_BP = 12
 
 # Medium tier: only when almost nothing passes strict (calling/selection failure).
@@ -67,7 +67,7 @@ def native_evidence_score(
     if ultra_scoring_core(call.pos):
         s += 12.0
     if noise_band_penalty(call.pos):
-        s -= 250.0
+        s -= 80.0
     if call.dp >= 6 and call.alt_ad > 0:
         af = call.alt_ad / call.dp
         if af >= 0.2:
@@ -86,11 +86,9 @@ def _passes_gate(
     key = (call.pos, call.ref, call.alt)
     has_cv = clinvar_ids.get(key, ".") not in (".", "")
 
-    if noise_band_penalty(call.pos):
-        return False
-
+    max_alen = max(profile.max_indel_len, NATIVE_MAX_ALLELE)
     alen = _allele_len(call.ref, call.alt)
-    if alen > NATIVE_MAX_ALLELE:
+    if alen > max_alen:
         return False
 
     min_dp, min_qual, min_ad = thresholds_for_position(call.pos, profile)

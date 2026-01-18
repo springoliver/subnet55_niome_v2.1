@@ -119,10 +119,18 @@ def main():
     print(f"method={METHOD_ID}")
     print(f"trim_max={NATIVE_COUNT_TRIM_MAX} (no minimum submit count)\n")
     ok = True
+    # 5.22.03: typical ultra-wide FPs near (not overlapping) truth indels
+    FP_52203 = [
+        (117504350, "A", "G", 80.0, 8, 12),
+        (117509041, "G", "T", 97.0, 22, 6),
+        (117510583, "AG", "A", 149.0, 26, 9),
+    ]
+
     for name, fps in [
         ("5.21.01", FP_501),
         ("5.21.02", FP_502),
         ("5.21.03", FP_503),
+        ("5.22.03", FP_52203),
     ]:
         r = run_round(name, fps)
         band = 1 <= r["submitted"] <= NATIVE_COUNT_TRIM_MAX
