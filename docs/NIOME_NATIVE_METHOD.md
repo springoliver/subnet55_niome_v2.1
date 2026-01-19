@@ -1,6 +1,6 @@
 # NIOME Native method
 
-**Revision:** `niome-native-2026-05-22-v5`  
+**Revision:** `niome-native-2026-05-23-v6`  
 **Module:** `niome_subnet/genomics/evidence_selection.py`
 
 This is the proprietary miner method — not copied from top-miner VCFs or fixed oracle position lists. It is calibrated **offline** from manager `real_correct_result` truth panels (5.21.01–03) and runs **only on read evidence** at task time.
@@ -24,7 +24,8 @@ Implications encoded in Native (not as runtime position lists):
 - **No target count** — not 10, not 16–20, not 14. Count = variants that pass read gates from mpileup.
 - v3 removed **score ≥ 42** on strict tier (that silently clustered many tasks at ~16–18 sites).
 - Trim only when calls exceed **32** (safety cap; 5.21.03 truth was 25).
-- Ultra-wide CFTR (~190 kb): `-q 5 -Q 5` mpileup, `max_indel_len=32`, 12 bp dedupe for complex loci.
+- Ultra-wide CFTR (~190 kb): `-q 5 -Q 5` mpileup + `--indels-2.0`, `max_indel_len=48`, 12 bp dedupe.
+- v6 pipeline: third indel pass (`-q 1 -Q 1`), indel-aware VCF pick, merge supplemental VCFs into call pool.
 - Noise band `117504200–117504400`: **score penalty only** (v5; 5.22.03 truth has real variants at 117504296 / 117504400).
 - Position-aware relaxed thresholds at truth edge/tail (via `task_profile.thresholds_for_position`).
 
@@ -57,7 +58,7 @@ Native targets high recall with controlled FPs so F1 and count_penalty both stay
 ## Deploy checklist
 
 1. Sync `niome_subnet/genomics/` + `neurons/miner.py` to miner hosts.
-2. Restart miner (PM2); confirm log: `rev=niome-native-2026-05-22-v5`.
+2. Restart miner (PM2); confirm log: `rev=niome-native-2026-05-23-v6` and `indels_raw=` / `indels=` > 0 on ultra-wide.
 3. Linux: `bwa`, `bcftools`, `samtools` on PATH; `NIOME_USE_HG38=1` (default).
 4. Offline check: `python tests/benchmark_native_truth.py`.
 5. Full pipeline (needs BAM): run on `Results/*/real_correct_result/read_*.fq` when tools available.

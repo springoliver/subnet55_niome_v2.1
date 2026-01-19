@@ -18,7 +18,7 @@ from niome_subnet.genomics.task_profile import (
     ultra_scoring_core,
 )
 
-METHOD_ID = "niome-native-2026-05-22-v5"
+METHOD_ID = "niome-native-2026-05-23-v6"
 
 # Upper safety trim only (5.21.03 truth = 25); never force a minimum.
 NATIVE_COUNT_TRIM_MAX = 32

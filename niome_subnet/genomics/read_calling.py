@@ -151,6 +151,42 @@ def parse_read_calls(
     return calls
 
 
+def count_indels_in_calls(calls: List[ReadCall]) -> int:
+    return sum(1 for c in calls if not is_simple_snp(c.ref, c.alt))
+
+
+def vcf_raw_stats_in_region(
+    vcf_path: Optional[str],
+    region_start: int,
+    region_end: int,
+    genomic_coords: bool = True,
+) -> Tuple[int, int]:
+    """Return (total_alleles, indel_alleles) in window before native selection."""
+    calls = parse_read_calls(vcf_path, region_start, region_end, genomic_coords)
+    if not calls and vcf_path:
+        calls = parse_read_calls(
+            vcf_path, region_start, region_end, genomic_coords, padded=False
+        )
+    return len(calls), count_indels_in_calls(calls)
+
+
+def merge_read_call_pools(
+    pools: List[List[ReadCall]],
+) -> List[ReadCall]:
+    """Dedupe by (pos, ref, alt); keep highest QUAL+AD support."""
+    best: Dict[Tuple[int, str, str], ReadCall] = {}
+    for pool in pools:
+        for call in pool:
+            key = (call.pos, call.ref.upper(), call.alt.upper())
+            prev = best.get(key)
+            score = call.qual + call.alt_ad * 4
+            if prev is None or score > prev.qual + prev.alt_ad * 4:
+                best[key] = call
+    out = list(best.values())
+    out.sort(key=lambda c: c.pos)
+    return out
+
+
 def count_calls_in_region(
     vcf_path: Optional[str],
     region_start: int,
@@ -312,22 +348,34 @@ def build_task_vcf(
     work_dir: str,
     raw_vcf_path: Optional[str] = None,
     genomic_coords: bool = True,
+    extra_vcf_paths: Optional[List[str]] = None,
 ) -> Tuple[str, Optional[Dict[str, Any]]]:
     """
     Build final VCF from read calls. Returns (path, None) — annotations via cftr_lookup.
+
+    extra_vcf_paths: optional supplemental mpileup VCFs (e.g. indel-rich retry) merged
+    before native selection.
     """
     region = task.genome_context.region
     _, region_start, region_end = parse_region(region)
     rlen = region_length(region)
     profile = classify_task(region, task.expected_variant_count)
 
-    calls = parse_read_calls(
-        raw_vcf_path, region_start, region_end, genomic_coords, padded=True
-    )
-    if not calls and raw_vcf_path:
-        calls = parse_read_calls(
-            raw_vcf_path, region_start, region_end, genomic_coords, padded=False
+    pools: List[List[ReadCall]] = []
+    for vcf in [raw_vcf_path] + list(extra_vcf_paths or []):
+        if not vcf:
+            continue
+        chunk = parse_read_calls(
+            vcf, region_start, region_end, genomic_coords, padded=True
         )
+        if not chunk:
+            chunk = parse_read_calls(
+                vcf, region_start, region_end, genomic_coords, padded=False
+            )
+        if chunk:
+            pools.append(chunk)
+
+    calls = merge_read_call_pools(pools)
 
     clinvar_ids = _load_clinvar_ids(region)
     selected = select_read_variants(
@@ -346,10 +394,13 @@ def build_task_vcf(
 
     n_read_gt = sum(1 for c in selected if c.dp > 0 and c.alt_ad > 0)
     in_core = sum(1 for c in selected if ultra_scoring_core(c.pos))
+    n_indel_raw = count_indels_in_calls(calls)
+    n_indel_sub = count_indels_in_calls(selected)
     bt.logging.info(
         f"[read_calling] task={task.task_id[:8]}… rev={READ_CALLING_REV} "
         f"profile={profile.name} region={region} len={rlen} "
-        f"raw_calls={len(calls)} submitted={len(selected)} core={in_core} "
+        f"raw_calls={len(calls)} indels_raw={n_indel_raw} "
+        f"submitted={len(selected)} indels={n_indel_sub} core={in_core} "
         f"read_gt={n_read_gt} snps={sum(1 for c in selected if is_simple_snp(c.ref, c.alt))} "
         f"clinvar_in_vcf={sum(1 for c in selected if c.clinvar_id != '.')}"
     )

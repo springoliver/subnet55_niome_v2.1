@@ -8,7 +8,7 @@ import re
 import shutil
 import subprocess
 import urllib.request
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 import bittensor as bt
 
@@ -19,8 +19,9 @@ from niome_subnet.genomics.read_calling import (
     count_calls_in_region,
     parse_region,
     region_length,
+    vcf_raw_stats_in_region,
 )
-from niome_subnet.genomics.task_profile import classify_task
+from niome_subnet.genomics.task_profile import TaskProfile, classify_task
 
 CACHE_DIR = os.path.join(os.path.expanduser("~"), ".niome")
 REF_DIR = os.path.join(CACHE_DIR, "ref")
@@ -137,11 +138,13 @@ def call_variants(
     raw_vcf: str,
     region: str,
     mpileup_qual: Optional[str] = None,
+    mpileup_extra: str = "",
 ) -> Tuple[str, str]:
     qual = mpileup_qual or os.environ.get("NIOME_MPILEUP_QUAL", "-q 1 -Q 1")
+    extra = mpileup_extra or os.environ.get("NIOME_MPILEUP_EXTRA", "")
     _run(
         f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
-        f"{qual} --max-depth 8000 {bam} "
+        f"{qual} {extra} --max-depth 8000 {bam} "
         f"| bcftools call -mv -Ov -o {raw_vcf}",
         "bcftools call",
     )
@@ -171,46 +174,69 @@ def _pick_best_vcf(
     region_start: int,
     region_end: int,
     genomic_coords: bool,
-    profile_name: str,
-    prefer_norm: bool,
-) -> Tuple[str, int, bool]:
+    profile: TaskProfile,
+) -> Tuple[str, int, bool, List[str]]:
     """
-    Choose calling VCF for downstream selection.
+    Choose primary calling VCF and optional supplemental paths to merge.
 
-    Ultra-wide: prefer norm (stricter mpileup) — avoids -q0 retry flooding FPs.
-    Compact: pick the candidate with the most in-window read-supported calls.
+    Ultra-wide (v6): reward indel-rich candidates; penalize SNP-only norm when
+    retry/indel pass finds indels. Compact: highest selected count wins.
     """
     region = f"chr7:{region_start}-{region_end}"
-    profile = classify_task(region)
     scored: list = []
+    raw_stats: dict = {}
 
     for path, label in candidates:
         if not path or not os.path.exists(path):
             continue
-        n, coords = count_calls_in_region(
+        n_sel, coords = count_calls_in_region(
             path, region_start, region_end, genomic_coords, profile
         )
-        bt.logging.info(f"[pipeline] {path} ({label}): {n} calls in task window")
-        is_norm = "norm" in label and "retry" not in label
-        is_strict = label == "norm"
-        score = float(n)
-        if prefer_norm and is_strict:
-            score += 1000.0
-        elif prefer_norm and is_norm:
+        n_raw, n_indel = vcf_raw_stats_in_region(
+            path, region_start, region_end, genomic_coords
+        )
+        raw_stats[path] = (n_raw, n_indel)
+        bt.logging.info(
+            f"[pipeline] {path} ({label}): selected={n_sel} raw={n_raw} indels={n_indel}"
+        )
+
+        score = float(n_sel) + 60.0 * float(n_indel)
+        if profile.name == "ultra_wide":
+            if "indel" in label:
+                score += 450.0
+            if "retry" in label and n_indel > 0:
+                score += 350.0
+            if label == "norm" and n_indel == 0:
+                score -= 150.0
+            if profile.prefer_norm_vcf and label == "norm" and n_indel > 0:
+                score += 200.0
+        elif profile.prefer_norm_vcf and label == "norm":
             score += 500.0
-        elif not prefer_norm:
-            score = float(n)
-        scored.append((score, path, n, coords, label))
+
+        scored.append((score, path, n_sel, coords, label, n_indel))
 
     if not scored:
-        return "", 0, genomic_coords
+        return "", 0, genomic_coords, []
 
     scored.sort(key=lambda x: x[0], reverse=True)
-    _, best_path, best_n, best_coords, best_label = scored[0]
+    _, best_path, best_n, best_coords, best_label, best_indel = scored[0]
     bt.logging.info(
-        f"[pipeline] picked {best_label} ({best_path}) profile={profile_name} n={best_n}"
+        f"[pipeline] picked {best_label} ({best_path}) profile={profile.name} "
+        f"n={best_n} indels={best_indel}"
     )
-    return best_path, best_n, best_coords
+
+    supplemental: List[str] = []
+    if profile.name == "ultra_wide":
+        for _, path, n_sel, _, label, n_indel in scored[1:]:
+            if path == best_path or n_indel == 0:
+                continue
+            if n_indel > best_indel:
+                supplemental.append(path)
+                bt.logging.info(
+                    f"[pipeline] supplemental merge {label} ({path}) indels={n_indel}"
+                )
+
+    return best_path, best_n, best_coords, supplemental
 
 
 def call_variants_with_fallback(
@@ -222,21 +248,27 @@ def call_variants_with_fallback(
     region_start: int,
     region_end: int,
     genomic_coords: bool,
-) -> Tuple[str, int, bool]:
+) -> Tuple[str, int, bool, List[str]]:
     reads = _bam_reads_in_region(bam, task_region)
     bt.logging.info(f"[pipeline] BAM reads in {task_region}: {reads}")
 
     task_region_str = f"chr7:{region_start}-{region_end}"
     profile = classify_task(task_region_str)
-    bt.logging.info(f"[pipeline] profile={profile.name} mpileup={profile.mpileup_qual}")
+    bt.logging.info(
+        f"[pipeline] profile={profile.name} mpileup={profile.mpileup_qual} "
+        f"extra={profile.mpileup_extra or '(none)'}"
+    )
 
     raw_vcf = os.path.join(work_dir, "raw.vcf")
-    raw1, norm1 = call_variants(ref, bam, raw_vcf, region, profile.mpileup_qual)
+    raw1, norm1 = call_variants(
+        ref, bam, raw_vcf, region, profile.mpileup_qual, profile.mpileup_extra
+    )
 
     raw2_path = os.path.join(work_dir, "raw.retry.vcf")
+    retry_extra = profile.mpileup_extra or "--indels-2.0"
     _run(
         f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
-        f"-q 0 -Q 0 --max-depth 8000 {bam} "
+        f"-q 0 -Q 0 {retry_extra} --max-depth 8000 {bam} "
         f"| bcftools call -mv -Ov -o {raw2_path}",
         "bcftools call retry",
     )
@@ -246,19 +278,41 @@ def call_variants_with_fallback(
         "bcftools norm retry",
     )
 
-    best_path, best_n, best_coords = _pick_best_vcf(
-        [(norm1, "norm"), (raw1, "raw"), (norm2, "norm-retry"), (raw2_path, "raw-retry")],
+    candidates = [
+        (norm1, "norm"),
+        (raw1, "raw"),
+        (norm2, "norm-retry"),
+        (raw2_path, "raw-retry"),
+    ]
+
+    if profile.name == "ultra_wide":
+        raw3 = os.path.join(work_dir, "raw.indel.vcf")
+        raw3, norm3 = call_variants(
+            ref,
+            bam,
+            raw3,
+            region,
+            "-q 1 -Q 1",
+            profile.mpileup_extra or "--indels-2.0",
+        )
+        candidates.extend([(norm3, "norm-indel"), (raw3, "raw-indel")])
+
+    best_path, best_n, best_coords, supplemental = _pick_best_vcf(
+        candidates,
         region_start,
         region_end,
         genomic_coords,
-        profile.name,
-        profile.prefer_norm_vcf,
+        profile,
     )
     if not best_path:
         best_path = norm1
         best_n = 0
-    bt.logging.info(f"[pipeline] selected {best_path} with {best_n} in-window calls")
-    return best_path, best_n, best_coords
+        supplemental = []
+    bt.logging.info(
+        f"[pipeline] selected {best_path} with {best_n} in-window calls "
+        f"supplemental={len(supplemental)}"
+    )
+    return best_path, best_n, best_coords, supplemental
 
 
 def run_pipeline(task: Task, work_dir: str):
@@ -281,6 +335,7 @@ def run_pipeline(task: Task, work_dir: str):
 
     raw_path: Optional[str] = None
     genomic_coords = False
+    supplemental: List[str] = []
 
     try:
         ref, genomic_coords = pick_reference()
@@ -297,7 +352,7 @@ def run_pipeline(task: Task, work_dir: str):
         )
         bam = os.path.join(work_dir, "aligned.bam")
         align_reads(ref, r1, r2, bam)
-        raw_path, n_calls, genomic_coords = call_variants_with_fallback(
+        raw_path, n_calls, genomic_coords, supplemental = call_variants_with_fallback(
             ref,
             bam,
             work_dir,
@@ -309,7 +364,7 @@ def run_pipeline(task: Task, work_dir: str):
         )
         bt.logging.info(
             f"[pipeline] ref={'hg38' if genomic_coords else 'slice'} "
-            f"calls_in_window={n_calls}"
+            f"calls_in_window={n_calls} supplemental_vcfs={len(supplemental)}"
         )
     except Exception as e:
         bt.logging.warning(f"Read alignment skipped: {e}")
@@ -319,4 +374,5 @@ def run_pipeline(task: Task, work_dir: str):
         work_dir,
         raw_vcf_path=raw_path,
         genomic_coords=genomic_coords,
+        extra_vcf_paths=supplemental,
     )

@@ -4,8 +4,8 @@ Analyze manager truth for Results/5.22.03 (task 7fc3be20).
 
 - Summarize truth VCF + cftr2_annotations
 - Compare to prior rounds
-- Offline Native v5 selection vs truth (synthetic read-supported pool)
-- Show noise-band sites (117504296 / 117504400) are kept after v5 (no hard drop)
+- Offline Native v6 selection vs truth (synthetic read-supported pool)
+- Show noise-band sites (117504296 / 117504400) are kept (no hard drop)
 """
 import importlib.util
 import json
@@ -187,8 +187,8 @@ def main():
     print("\n--- Implications for live miners (~0.56 on this task) ---")
     print("  - Truth N=26; submitting ~19-21 costs count_penalty.")
     print("  - Need ~10x 1/1 GT where AF high; all 0/1 loses ~half on hom-alt sites.")
-    print("  - v5: noise band is score penalty only — 117504296/117504400 can be submitted.")
-    print("  - Deploy v5 + pm2 restart; cache key now includes rev string.")
+    print("  - v6: noise band penalty only; pipeline --indels-2.0 + supplemental VCF merge.")
+    print("  - Deploy v6 + pm2 restart; log must show indels_raw > 0 on ultra-wide.")
     print("=" * 72)
     return 0 if len(tk - sk) == 0 else 1
 

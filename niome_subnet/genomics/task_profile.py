@@ -43,6 +43,7 @@ class TaskProfile:
     max_indel_len: int
     indel_min_dp: int
     mpileup_qual: str
+    mpileup_extra: str
     prefer_norm_vcf: bool
     dedupe_window: int
 
@@ -57,6 +58,7 @@ PROFILES = {
         max_indel_len=48,
         indel_min_dp=10,
         mpileup_qual="-q 5 -Q 5",
+        mpileup_extra="--indels-2.0",
         prefer_norm_vcf=True,
         dedupe_window=12,
     ),
@@ -69,6 +71,7 @@ PROFILES = {
         max_indel_len=8,
         indel_min_dp=10,
         mpileup_qual="-q 5 -Q 5",
+        mpileup_extra="--indels-2.0",
         prefer_norm_vcf=True,
         dedupe_window=3,
     ),
@@ -81,6 +84,7 @@ PROFILES = {
         max_indel_len=12,
         indel_min_dp=8,
         mpileup_qual="-q 1 -Q 1",
+        mpileup_extra="",
         prefer_norm_vcf=False,
         dedupe_window=3,
     ),
