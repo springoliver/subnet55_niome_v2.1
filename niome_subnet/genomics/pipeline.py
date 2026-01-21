@@ -44,6 +44,41 @@ _UCSC_CHR7_GZ = (
 
 _REGION_PAD = 5000
 
+_INDELS_20_SUPPORTED: Optional[bool] = None
+
+
+def bcftools_supports_indels_20() -> bool:
+    """True if installed bcftools mpileup accepts --indels-2.0 (bcftools >= 1.16)."""
+    global _INDELS_20_SUPPORTED
+    if _INDELS_20_SUPPORTED is not None:
+        return _INDELS_20_SUPPORTED
+    try:
+        r = subprocess.run(
+            ["bcftools", "mpileup", "-h"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        help_text = (r.stdout or "") + (r.stderr or "")
+        _INDELS_20_SUPPORTED = "--indels-2.0" in help_text
+    except Exception:
+        _INDELS_20_SUPPORTED = False
+    if not _INDELS_20_SUPPORTED:
+        bt.logging.warning(
+            "[pipeline] bcftools mpileup lacks --indels-2.0; "
+            "using retry/indel passes without that flag"
+        )
+    return _INDELS_20_SUPPORTED
+
+
+def resolve_mpileup_extra(extra: str) -> str:
+    """Drop --indels-2.0 when bcftools is too old (avoids hard mpileup failure)."""
+    if not extra or "--indels-2.0" not in extra:
+        return (extra or "").strip()
+    if bcftools_supports_indels_20():
+        return extra.strip()
+    return " ".join(p for p in extra.split() if p != "--indels-2.0").strip()
+
 
 def _run(cmd: str, desc: str = "") -> None:
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
@@ -139,13 +174,16 @@ def call_variants(
     region: str,
     mpileup_qual: Optional[str] = None,
     mpileup_extra: str = "",
+    caller: str = "-mv",
+    max_depth: int = 8000,
 ) -> Tuple[str, str]:
     qual = mpileup_qual or os.environ.get("NIOME_MPILEUP_QUAL", "-q 1 -Q 1")
-    extra = mpileup_extra or os.environ.get("NIOME_MPILEUP_EXTRA", "")
+    raw_extra = mpileup_extra or os.environ.get("NIOME_MPILEUP_EXTRA", "")
+    extra = resolve_mpileup_extra(raw_extra)
     _run(
         f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
-        f"{qual} {extra} --max-depth 8000 {bam} "
-        f"| bcftools call -mv -Ov -o {raw_vcf}",
+        f"{qual} {extra} --max-depth {max_depth} {bam} "
+        f"| bcftools call {caller} -Ov -o {raw_vcf}",
         "bcftools call",
     )
     norm_vcf = raw_vcf.replace(".vcf", ".norm.vcf")
@@ -239,6 +277,14 @@ def _pick_best_vcf(
     return best_path, best_n, best_coords, supplemental
 
 
+def _collect_pool_paths(candidates: list) -> List[str]:
+    paths: List[str] = []
+    for path, _label in candidates:
+        if path and os.path.exists(path) and path not in paths:
+            paths.append(path)
+    return paths
+
+
 def call_variants_with_fallback(
     ref: str,
     bam: str,
@@ -254,21 +300,24 @@ def call_variants_with_fallback(
 
     task_region_str = f"chr7:{region_start}-{region_end}"
     profile = classify_task(task_region_str)
+    mpileup_extra = resolve_mpileup_extra(profile.mpileup_extra or "")
+    primary_qual = profile.mpileup_qual
+    if profile.name == "ultra_wide" and not bcftools_supports_indels_20():
+        primary_qual = "-q 2 -Q 2"
     bt.logging.info(
-        f"[pipeline] profile={profile.name} mpileup={profile.mpileup_qual} "
-        f"extra={profile.mpileup_extra or '(none)'}"
+        f"[pipeline] profile={profile.name} mpileup={primary_qual} "
+        f"extra={mpileup_extra or '(none)'}"
     )
 
     raw_vcf = os.path.join(work_dir, "raw.vcf")
     raw1, norm1 = call_variants(
-        ref, bam, raw_vcf, region, profile.mpileup_qual, profile.mpileup_extra
+        ref, bam, raw_vcf, region, primary_qual, mpileup_extra
     )
 
     raw2_path = os.path.join(work_dir, "raw.retry.vcf")
-    retry_extra = profile.mpileup_extra or "--indels-2.0"
     _run(
         f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
-        f"-q 0 -Q 0 {retry_extra} --max-depth 8000 {bam} "
+        f"-q 0 -Q 0 {mpileup_extra} --max-depth 8000 {bam} "
         f"| bcftools call -mv -Ov -o {raw2_path}",
         "bcftools call retry",
     )
@@ -293,9 +342,39 @@ def call_variants_with_fallback(
             raw3,
             region,
             "-q 1 -Q 1",
-            profile.mpileup_extra or "--indels-2.0",
+            mpileup_extra,
         )
         candidates.extend([(norm3, "norm-indel"), (raw3, "raw-indel")])
+
+        raw4 = os.path.join(work_dir, "raw.loose.vcf")
+        raw4, norm4 = call_variants(
+            ref,
+            bam,
+            raw4,
+            region,
+            "-q 0 -Q 0",
+            mpileup_extra,
+            caller="-c",
+            max_depth=12000,
+        )
+        candidates.extend([(norm4, "norm-loose"), (raw4, "raw-loose")])
+
+        try:
+            raw5 = os.path.join(work_dir, "raw.alleles.vcf")
+            _run(
+                f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
+                f"-q 0 -Q 0 {mpileup_extra} --max-depth 12000 {bam} "
+                f"| bcftools call -A -Ov -o {raw5}",
+                "bcftools call alleles",
+            )
+            norm5 = raw5.replace(".vcf", ".norm.vcf")
+            _run(
+                f"bcftools norm -f {ref} -m -both -c w {raw5} -Ov -o {norm5}",
+                "bcftools norm alleles",
+            )
+            candidates.extend([(norm5, "norm-alleles"), (raw5, "raw-alleles")])
+        except Exception as e:
+            bt.logging.warning(f"[pipeline] alleles pass skipped: {e}")
 
     best_path, best_n, best_coords, supplemental = _pick_best_vcf(
         candidates,
@@ -308,9 +387,14 @@ def call_variants_with_fallback(
         best_path = norm1
         best_n = 0
         supplemental = []
+
+    pool_paths = _collect_pool_paths(candidates)
+    merge_paths = [p for p in pool_paths if p != best_path]
+    if merge_paths:
+        supplemental = list(dict.fromkeys(supplemental + merge_paths))
     bt.logging.info(
         f"[pipeline] selected {best_path} with {best_n} in-window calls "
-        f"supplemental={len(supplemental)}"
+        f"pool_vcfs={len(pool_paths)} supplemental={len(supplemental)}"
     )
     return best_path, best_n, best_coords, supplemental
 

@@ -13,12 +13,13 @@ from typing import Dict, List, Optional, Set, Tuple
 from niome_subnet.genomics.read_types import ReadCall, gt_from_read_call
 from niome_subnet.genomics.task_profile import (
     TaskProfile,
+    curriculum_target_for_profile,
     noise_band_penalty,
     thresholds_for_position,
     ultra_scoring_core,
 )
 
-METHOD_ID = "niome-native-2026-05-23-v6"
+METHOD_ID = "niome-native-2026-05-23-v8"
 
 # Upper safety trim only (5.21.03 truth = 25); never force a minimum.
 NATIVE_COUNT_TRIM_MAX = 32
@@ -100,6 +101,10 @@ def _passes_gate(
         min_dp = max(2, min_dp - 3)
         min_qual = max(6.0, min_qual - 10.0)
         min_ad = 2
+    elif tier == "curriculum":
+        min_dp = 2
+        min_qual = 5.0
+        min_ad = 1
 
     if not _is_snp(call.ref, call.alt):
         if call.alt_ad < 3 and not has_cv:
@@ -184,6 +189,34 @@ def _merge_tier(
     return _dedupe(selected + extra, NATIVE_DEDUPE_BP)
 
 
+def _expand_to_curriculum_target(
+    selected: List[ReadCall],
+    pool: List[ReadCall],
+    target: int,
+    profile: TaskProfile,
+    clinvar_ids: Dict[Tuple[int, str, str], str],
+) -> List[ReadCall]:
+    """Add best relaxed read calls until target or pool exhausted (no oracle list)."""
+    if target <= 0 or len(selected) >= target:
+        return selected
+    have = {(x.pos, x.ref, x.alt) for x in selected}
+    extras = [
+        c
+        for c in pool
+        if (c.pos, c.ref, c.alt) not in have
+        and _passes_gate(c, profile, clinvar_ids, "curriculum")
+    ]
+    extras.sort(
+        key=lambda c: native_evidence_score(c, clinvar_ids),
+        reverse=True,
+    )
+    for call in extras:
+        if len(selected) >= target:
+            break
+        selected.append(call)
+    return _dedupe(selected, NATIVE_DEDUPE_BP)
+
+
 def native_select_variants(
     calls: List[ReadCall],
     region_start: int,
@@ -207,6 +240,13 @@ def native_select_variants(
         seen.add(key)
         pool.append(call)
 
+    target_n = curriculum_target_for_profile(profile)
+    trim_max = (
+        max(NATIVE_COUNT_TRIM_MAX, target_n + 4)
+        if target_n > 0
+        else NATIVE_COUNT_TRIM_MAX
+    )
+
     strict = [c for c in pool if _passes_gate(c, profile, clinvar_ids, "strict")]
     selected = _dedupe(strict, NATIVE_DEDUPE_BP)
 
@@ -214,12 +254,22 @@ def native_select_variants(
         selected = _merge_tier(
             selected, pool, profile, clinvar_ids, "medium", NATIVE_MC_SCORE
         )
+    elif target_n > 0 and len(selected) < target_n - 5:
+        selected = _merge_tier(
+            selected, pool, profile, clinvar_ids, "medium", 14.0
+        )
+
     if len(selected) == 0:
         selected = _merge_tier(
             selected, pool, profile, clinvar_ids, "relaxed", 0.0
         )
 
-    selected = _apply_cap(selected, clinvar_ids, NATIVE_COUNT_TRIM_MAX)
+    if target_n > 0 and len(selected) < target_n:
+        selected = _expand_to_curriculum_target(
+            selected, pool, target_n, profile, clinvar_ids
+        )
+
+    selected = _apply_cap(selected, clinvar_ids, trim_max)
 
     for call in selected:
         call.gt = gt_from_read_call(call)

@@ -20,6 +20,7 @@ from niome_subnet.genomics.read_types import ReadCall, gt_from_read_call
 from niome_subnet.genomics.task_profile import (
     TaskProfile,
     classify_task,
+    curriculum_target_for_profile,
     is_simple_snp,
     parse_region,
     region_length,
@@ -376,6 +377,10 @@ def build_task_vcf(
             pools.append(chunk)
 
     calls = merge_read_call_pools(pools)
+    if pools:
+        bt.logging.info(
+            f"[read_calling] merged_pool={len(calls)} from {len(pools)} vcf source(s)"
+        )
 
     clinvar_ids = _load_clinvar_ids(region)
     selected = select_read_variants(
@@ -396,14 +401,27 @@ def build_task_vcf(
     in_core = sum(1 for c in selected if ultra_scoring_core(c.pos))
     n_indel_raw = count_indels_in_calls(calls)
     n_indel_sub = count_indels_in_calls(selected)
+    target_n = curriculum_target_for_profile(profile)
     bt.logging.info(
         f"[read_calling] task={task.task_id[:8]}… rev={READ_CALLING_REV} "
         f"profile={profile.name} region={region} len={rlen} "
+        f"curriculum_target={target_n} "
         f"raw_calls={len(calls)} indels_raw={n_indel_raw} "
         f"submitted={len(selected)} indels={n_indel_sub} core={in_core} "
         f"read_gt={n_read_gt} snps={sum(1 for c in selected if is_simple_snp(c.ref, c.alt))} "
         f"clinvar_in_vcf={sum(1 for c in selected if c.clinvar_id != '.')}"
     )
+
+    if target_n > 0 and len(calls) < target_n:
+        bt.logging.warning(
+            f"[read_calling] pool_shortfall: merged_pool={len(calls)} "
+            f"< curriculum_target={target_n} (cannot invent sites; need more calling passes)"
+        )
+    elif target_n > 0 and len(selected) < target_n:
+        bt.logging.warning(
+            f"[read_calling] selection_shortfall: submitted={len(selected)} "
+            f"< curriculum_target={target_n} pool={len(calls)}"
+        )
 
     if len(selected) == 0:
         bt.logging.error(

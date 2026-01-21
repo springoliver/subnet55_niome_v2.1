@@ -101,6 +101,9 @@ module.exports = {
         "--axon.port", "8107",
         "--logging.debug"
       ],
+      env: {
+        NIOME_CURRICULUM_TARGET: "30"
+      },
       cwd: ".",
       interpreter: "none",
       autorestart: true,

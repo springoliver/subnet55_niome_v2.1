@@ -9,6 +9,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GENOMICS = os.path.join(ROOT, "niome_subnet", "genomics")
 RESULTS = os.path.join(ROOT, "Results")
 
+# Offline truth benchmarks: no curriculum fill (live ultra_wide uses target 30).
+os.environ["NIOME_CURRICULUM_TARGET"] = "0"
+
 _bt = types.SimpleNamespace()
 _bt.logging = types.SimpleNamespace(
     info=lambda *a, **k: None,

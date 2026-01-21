@@ -5,6 +5,7 @@ Live example (d36bc530): chr7:117480000-117670000 (~190 kb), expected_variant_co
 → ultra_wide: multi-cluster read evidence across CFTR, not a single ClinVar panel.
 """
 
+import os
 from dataclasses import dataclass
 from typing import Tuple
 
@@ -28,6 +29,10 @@ ULTRA_TAIL_LO = 117590000
 ULTRA_TAIL_HI = 117653500
 # v3-ultra4: only trim when far above manager range (11–25 seen in 5.21.01–03)
 ULTRA_TRIM_ABOVE = 28
+
+# Scored-panel trend on ultra-wide (top miner N): 5.21.04≈20, 5.22.01≈22, 5.22.04≈29 → ~30 next.
+# Read-backed fill toward this target (not oracle positions). Disable: NIOME_CURRICULUM_TARGET=0
+ULTRA_CURRICULUM_TARGET = 30
 
 _DENSE_LO = 117547500
 _DENSE_HI = 117561000
@@ -101,6 +106,24 @@ def parse_region(region: str) -> Tuple[str, int, int]:
     chrom, rest = region.split(":")
     start, end = rest.split("-")
     return chrom, int(start), int(end)
+
+
+def curriculum_target_for_profile(profile: TaskProfile) -> int:
+    """
+    Soft submit-count goal for ultra_wide (improves count_penalty vs rising truth N).
+    Still only sites present in the mpileup pool — cannot invent variants.
+    """
+    env = os.environ.get("NIOME_CURRICULUM_TARGET", "").strip().lower()
+    if env in ("0", "false", "no", "off", "disable"):
+        return 0
+    if env:
+        try:
+            return max(0, int(env))
+        except ValueError:
+            pass
+    if profile.name == "ultra_wide":
+        return ULTRA_CURRICULUM_TARGET
+    return 0
 
 
 def classify_task(region: str, expected_variant_count: int = 0) -> TaskProfile:
