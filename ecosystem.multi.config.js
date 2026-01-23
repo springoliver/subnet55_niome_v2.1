@@ -102,7 +102,9 @@ module.exports = {
         "--logging.debug"
       ],
       env: {
-        NIOME_CURRICULUM_TARGET: "30"
+        NIOME_CURRICULUM_TARGET: "30",
+        NIOME_WIN_MODE: "1",
+        NIOME_VCF_MINIMAL: "1"
       },
       cwd: ".",
       interpreter: "none",

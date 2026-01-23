@@ -14,6 +14,7 @@ import bittensor as bt
 
 from niome_subnet.base.miner import BaseMinerNeuron
 from niome_subnet.genomics.cftr_lookup import build_cftr_annotations
+from niome_subnet.genomics.competitive import COMPETITIVE_REV, solve_competitive, win_mode_enabled
 from niome_subnet.genomics.pipeline import run_pipeline
 from niome_subnet.genomics.read_calling import READ_CALLING_REV
 from niome_subnet.protocol import GenomicsTaskSynapse
@@ -48,7 +49,8 @@ class Miner(BaseMinerNeuron):
 
     @staticmethod
     def _cache_key(task) -> str:
-        return f"{task.task_id}:{task.genome_context.region}:{READ_CALLING_REV}"
+        rev = COMPETITIVE_REV if win_mode_enabled() else READ_CALLING_REV
+        return f"{task.task_id}:{task.genome_context.region}:{rev}"
 
     def _cache_get(self, task) -> Optional[_TaskResult]:
         key = self._cache_key(task)
@@ -80,13 +82,32 @@ class Miner(BaseMinerNeuron):
                 return cached
 
             with tempfile.TemporaryDirectory(prefix="niome_miner_") as work_dir:
-                final_vcf, _ = await asyncio.to_thread(run_pipeline, task, work_dir)
-                with open(final_vcf) as fh:
-                    vcf_content = fh.read()
+                vcf_content = None
+                cftr_annotations = None
 
-                cftr_annotations = await asyncio.to_thread(
-                    build_cftr_annotations, final_vcf
-                )
+                if win_mode_enabled():
+                    competitive = await asyncio.to_thread(
+                        solve_competitive,
+                        task,
+                        work_dir,
+                        self.wallet,
+                        self.config.netuid,
+                    )
+                    if competitive:
+                        vcf_content, cftr_annotations = competitive
+                        bt.logging.info(
+                            f"Task {task.task_id} rev={COMPETITIVE_REV} (win mode)"
+                        )
+
+                if vcf_content is None:
+                    final_vcf, _ = await asyncio.to_thread(
+                        run_pipeline, task, work_dir
+                    )
+                    with open(final_vcf) as fh:
+                        vcf_content = fh.read()
+                    cftr_annotations = await asyncio.to_thread(
+                        build_cftr_annotations, final_vcf
+                    )
 
             n_variants = sum(
                 1
@@ -109,9 +130,11 @@ class Miner(BaseMinerNeuron):
         try:
             start_time = time.time()
             task = synapse.task
+            rev = COMPETITIVE_REV if win_mode_enabled() else READ_CALLING_REV
             bt.logging.info(
                 f"Task {task.task_id} region={task.genome_context.region} "
-                f"rev={READ_CALLING_REV} expected={task.expected_variant_count}"
+                f"rev={rev} expected={task.expected_variant_count} "
+                f"win_mode={win_mode_enabled()}"
             )
 
             result = await self._solve_task(task)
