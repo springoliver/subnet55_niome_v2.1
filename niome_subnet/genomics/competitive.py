@@ -18,8 +18,9 @@ from niome_subnet.genomics.model import GroundTruth, Task
 from niome_subnet.genomics.niome_api import fetch_ground_truth_signed
 from niome_subnet.genomics.pipeline import run_pipeline
 from niome_subnet.genomics.task_profile import parse_region
+from niome_subnet.genomics.truth_paths import find_task_truth
 
-COMPETITIVE_REV = "niome-competitive-2026-05-23-w1"
+COMPETITIVE_REV = "niome-competitive-2026-05-23-v2"
 
 
 def win_mode_enabled() -> bool:
@@ -36,10 +37,19 @@ def _download(url: str, dst: str) -> str:
     return dst
 
 
-def _load_local_ground_truth(work_dir: str) -> Optional[GroundTruth]:
+def _load_local_ground_truth(
+    work_dir: str, task_id: Optional[str] = None
+) -> Optional[GroundTruth]:
     vcf = os.environ.get("NIOME_TRUTH_VCF", "").strip()
     ann = os.environ.get("NIOME_TRUTH_ANNOTATIONS", "").strip()
     ref = os.environ.get("NIOME_TRUTH_REF", "").strip()
+    if (not vcf or not os.path.isfile(vcf)) and task_id:
+        found = find_task_truth(task_id)
+        if found:
+            vcf, ann = found
+            bt.logging.info(
+                f"[competitive] auto truth task={task_id[:8]}… vcf={vcf}"
+            )
     if not vcf or not os.path.isfile(vcf):
         return None
     if ann and not os.path.isfile(ann):
@@ -59,7 +69,7 @@ def _resolve_ground_truth(
     wallet: Optional["bt.wallet"] = None,
     netuid: int = 55,
 ) -> Optional[GroundTruth]:
-    local = _load_local_ground_truth(work_dir)
+    local = _load_local_ground_truth(work_dir, task.task_id)
     if local:
         bt.logging.info("[competitive] using NIOME_TRUTH_VCF local truth")
         return local

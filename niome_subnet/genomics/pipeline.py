@@ -45,6 +45,27 @@ _UCSC_CHR7_GZ = (
 _REGION_PAD = 5000
 
 _INDELS_20_SUPPORTED: Optional[bool] = None
+_BCFTOOLS_VERSION_LOGGED = False
+
+
+def log_bcftools_version() -> None:
+    global _BCFTOOLS_VERSION_LOGGED
+    if _BCFTOOLS_VERSION_LOGGED:
+        return
+    _BCFTOOLS_VERSION_LOGGED = True
+    try:
+        r = subprocess.run(
+            ["bcftools", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        line = (r.stdout or r.stderr or "").splitlines()[0] if r.stdout or r.stderr else "unknown"
+        bt.logging.info(
+            f"[pipeline] {line} indels-2.0={bcftools_supports_indels_20()}"
+        )
+    except Exception as e:
+        bt.logging.warning(f"[pipeline] bcftools version check failed: {e}")
 
 
 def bcftools_supports_indels_20() -> bool:
@@ -266,12 +287,13 @@ def _pick_best_vcf(
     supplemental: List[str] = []
     if profile.name == "ultra_wide":
         for _, path, n_sel, _, label, n_indel in scored[1:]:
-            if path == best_path or n_indel == 0:
+            if path == best_path:
                 continue
-            if n_indel > best_indel:
+            if n_indel > 0 or n_sel > 0:
                 supplemental.append(path)
                 bt.logging.info(
-                    f"[pipeline] supplemental merge {label} ({path}) indels={n_indel}"
+                    f"[pipeline] supplemental merge {label} ({path}) "
+                    f"sel={n_sel} indels={n_indel}"
                 )
 
     return best_path, best_n, best_coords, supplemental
@@ -285,6 +307,28 @@ def _collect_pool_paths(candidates: list) -> List[str]:
     return paths
 
 
+def _emergency_call(
+    ref: str,
+    bam: str,
+    work_dir: str,
+    region: str,
+) -> Tuple[str, str]:
+    """Ultra-loose pass when all standard calls return zero in-window."""
+    raw_path = os.path.join(work_dir, "raw.emergency.vcf")
+    _run(
+        f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
+        f"-q 0 -Q 0 --max-depth 16000 {bam} "
+        f"| bcftools call -c -Ov -o {raw_path}",
+        "bcftools emergency",
+    )
+    norm_path = raw_path.replace(".vcf", ".norm.vcf")
+    _run(
+        f"bcftools norm -f {ref} -m -both -c w {raw_path} -Ov -o {norm_path}",
+        "bcftools norm emergency",
+    )
+    return raw_path, norm_path
+
+
 def call_variants_with_fallback(
     ref: str,
     bam: str,
@@ -295,6 +339,7 @@ def call_variants_with_fallback(
     region_end: int,
     genomic_coords: bool,
 ) -> Tuple[str, int, bool, List[str]]:
+    log_bcftools_version()
     reads = _bam_reads_in_region(bam, task_region)
     bt.logging.info(f"[pipeline] BAM reads in {task_region}: {reads}")
 
@@ -383,10 +428,26 @@ def call_variants_with_fallback(
         genomic_coords,
         profile,
     )
-    if not best_path:
-        best_path = norm1
-        best_n = 0
-        supplemental = []
+    if not best_path or best_n == 0:
+        try:
+            raw_e, norm_e = _emergency_call(ref, bam, work_dir, region)
+            candidates.extend([(norm_e, "norm-emergency"), (raw_e, "raw-emergency")])
+            best_path, best_n, best_coords, supplemental = _pick_best_vcf(
+                candidates,
+                region_start,
+                region_end,
+                genomic_coords,
+                profile,
+            )
+            bt.logging.warning(
+                f"[pipeline] emergency call pass selected={best_path} n={best_n}"
+            )
+        except Exception as e:
+            bt.logging.warning(f"[pipeline] emergency call failed: {e}")
+        if not best_path:
+            best_path = norm1
+            best_n = 0
+            supplemental = []
 
     pool_paths = _collect_pool_paths(candidates)
     merge_paths = [p for p in pool_paths if p != best_path]

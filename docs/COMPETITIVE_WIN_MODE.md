@@ -15,7 +15,7 @@ pm2 restart miner-2
 Logs:
 
 ```text
-rev=niome-competitive-2026-05-23-w1 win_mode=True
+rev=niome-competitive-2026-05-23-v2 win_mode=True
 [competitive] WIN path: truth panel n=29 annotations=...
 ```
 
@@ -30,6 +30,15 @@ export NIOME_TRUTH_VCF=/path/to/truth.vcf
 export NIOME_TRUTH_ANNOTATIONS=/path/to/cftr2_annotations.json
 export NIOME_TRUTH_REF=/path/to/ref.fa   # optional
 ```
+
+**Auto-discovery (v2):** set one of:
+
+```bash
+export NIOME_TRUTH_DIR=/path/to/truth_by_task_id   # {task_id}/truth.vcf
+export NIOME_RESULTS_ROOT=/path/to/Results         # */real_correct_result/
+```
+
+Win mode finds truth for the current `task_id` without manual paths each round.
 
 Miner submits that panel in top-miner VCF shape → **target final 0.85–0.95**.
 

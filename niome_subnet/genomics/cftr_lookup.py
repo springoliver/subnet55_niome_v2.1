@@ -209,7 +209,15 @@ def _parse_info(info_str: str) -> Dict[str, str]:
     return result
 
 
+def _normalize_clnsig(clnsig: str) -> str:
+    """Match validator cftr2 style (spaces, not underscores)."""
+    if not clnsig:
+        return "Uncertain significance"
+    return " ".join(clnsig.replace("_", " ").split())
+
+
 def _build_genomic_hgvs(chrom: str, pos: str, ref: str, alt: str) -> str:
+    chrom = chrom if chrom.startswith("chr") else f"chr{chrom}"
     if len(ref) == 1 and len(alt) == 1:
         return f"NC_000007.14:g.{pos}{ref}>{alt}"
     return f"NC_000007.14:g.{pos}{ref}>{alt}"
@@ -263,11 +271,12 @@ def build_cftr_annotations(vcf_path: str) -> Optional[Dict[str, Any]]:
             if not vcf_id or vcf_id == ".":
                 continue
 
-            clnsig = info.get("CLNSIG", "Uncertain_significance").replace("_", " ")
+            clnsig_raw = info.get("CLNSIG", "Uncertain_significance")
+            clnsig = _normalize_clnsig(clnsig_raw.split(",")[0])
             clnhgvs = info.get("CLNHGVS", "")
             variant_id = vcf_id.split(";")[0]
             hgvs = (
-                clnhgvs.split("|")[0]
+                clnhgvs.split("|")[0].strip()
                 if clnhgvs
                 else _build_genomic_hgvs(chrom, pos, ref, alt)
             )
@@ -275,7 +284,11 @@ def build_cftr_annotations(vcf_path: str) -> Optional[Dict[str, Any]]:
             annotations[variant_id] = {
                 "hgvs": hgvs,
                 "clinical_significance": clnsig,
-                "drug_response": _drug_response(variant_id, clnsig),
+                "drug_response": _drug_response(variant_id, clnsig_raw),
             }
 
+    if annotations:
+        bt.logging.info(
+            f"[cftr_lookup] annotations={len(annotations)} for {vcf_path}"
+        )
     return annotations if annotations else None

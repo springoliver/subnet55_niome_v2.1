@@ -19,16 +19,17 @@ from niome_subnet.genomics.task_profile import (
     ultra_scoring_core,
 )
 
-METHOD_ID = "niome-native-2026-05-23-v8"
+METHOD_ID = "niome-native-2026-05-23-v9"
 
 # Upper safety trim only (5.21.03 truth = 25); never force a minimum.
-NATIVE_COUNT_TRIM_MAX = 32
-NATIVE_MAX_ALLELE = 48
+NATIVE_COUNT_TRIM_MAX = 34
+NATIVE_MAX_ALLELE = 52
 NATIVE_DEDUPE_BP = 12
 
-# Medium tier: only when almost nothing passes strict (calling/selection failure).
-NATIVE_RECALL_STRICT_MAX = 2
-NATIVE_MC_SCORE = 22.0
+# Medium tier: when strict pool is thin vs curriculum target (recall + count).
+NATIVE_RECALL_STRICT_MAX = 4
+NATIVE_MC_SCORE = 18.0
+NATIVE_INDEL_MC_SCORE = 8.0
 
 
 def _allele_len(ref: str, alt: str) -> int:
@@ -107,12 +108,19 @@ def _passes_gate(
         min_ad = 1
 
     if not _is_snp(call.ref, call.alt):
-        if call.alt_ad < 3 and not has_cv:
-            return False
-        if call.qual < 10.0 and not has_cv:
-            return False
-        if call.dp < profile.indel_min_dp and call.alt_ad < 5:
-            return False
+        if tier == "curriculum":
+            if call.alt_ad < 1 and call.qual < 6.0 and not has_cv:
+                return False
+        elif tier == "medium":
+            if call.alt_ad < 2 and call.qual < 8.0 and not has_cv:
+                return False
+        else:
+            if call.alt_ad < 2 and not has_cv:
+                return False
+            if call.qual < 8.0 and not has_cv:
+                return False
+            if call.dp < max(6, profile.indel_min_dp - 3) and call.alt_ad < 4:
+                return False
 
     if not call.pass_filter and call.qual < min_qual:
         return False
@@ -189,6 +197,19 @@ def _merge_tier(
     return _dedupe(selected + extra, NATIVE_DEDUPE_BP)
 
 
+def _sort_curriculum_fill(
+    calls: List[ReadCall],
+    clinvar_ids: Dict[Tuple[int, str, str], str],
+) -> List[ReadCall]:
+    """Prefer indels and high evidence when filling toward curriculum target."""
+
+    def key(c: ReadCall) -> Tuple[int, float]:
+        indel = 0 if _is_snp(c.ref, c.alt) else 1
+        return (indel, native_evidence_score(c, clinvar_ids))
+
+    return sorted(calls, key=key, reverse=True)
+
+
 def _expand_to_curriculum_target(
     selected: List[ReadCall],
     pool: List[ReadCall],
@@ -206,15 +227,64 @@ def _expand_to_curriculum_target(
         if (c.pos, c.ref, c.alt) not in have
         and _passes_gate(c, profile, clinvar_ids, "curriculum")
     ]
-    extras.sort(
-        key=lambda c: native_evidence_score(c, clinvar_ids),
-        reverse=True,
-    )
-    for call in extras:
+    for call in _sort_curriculum_fill(extras, clinvar_ids):
         if len(selected) >= target:
             break
         selected.append(call)
     return _dedupe(selected, NATIVE_DEDUPE_BP)
+
+
+def _expand_indel_recall(
+    selected: List[ReadCall],
+    pool: List[ReadCall],
+    profile: TaskProfile,
+    clinvar_ids: Dict[Tuple[int, str, str], str],
+) -> List[ReadCall]:
+    """Pull indels from pool with softer gates before curriculum fill."""
+    have = {(x.pos, x.ref, x.alt) for x in selected}
+    indels = [
+        c
+        for c in pool
+        if (c.pos, c.ref, c.alt) not in have
+        and not _is_snp(c.ref, c.alt)
+        and _passes_gate(c, profile, clinvar_ids, "medium")
+        and native_evidence_score(c, clinvar_ids) >= NATIVE_INDEL_MC_SCORE
+    ]
+    if not indels:
+        return selected
+    return _dedupe(selected + _sort_curriculum_fill(indels, clinvar_ids), NATIVE_DEDUPE_BP)
+
+
+def emergency_select_variants(
+    pool: List[ReadCall],
+    region_start: int,
+    region_end: int,
+    profile: TaskProfile,
+    clinvar_ids: Dict[Tuple[int, str, str], str],
+    max_n: int = 28,
+) -> List[ReadCall]:
+    """
+    Last resort when strict/relaxed tiers yield zero — avoid empty VCF submit.
+    Still read-backed; no invented coordinates.
+    """
+    in_window = [
+        c
+        for c in pool
+        if region_start <= c.pos <= region_end and c.alt_ad >= 1
+    ]
+    if not in_window:
+        return []
+    ranked = sorted(
+        in_window,
+        key=lambda c: native_evidence_score(c, clinvar_ids),
+        reverse=True,
+    )
+    cap = max_n or curriculum_target_for_profile(profile) or 24
+    out = _dedupe(ranked[: cap + 6], NATIVE_DEDUPE_BP)[:cap]
+    for call in out:
+        call.gt = gt_from_read_call(call)
+    out.sort(key=lambda c: c.pos)
+    return out
 
 
 def native_select_variants(
@@ -254,9 +324,9 @@ def native_select_variants(
         selected = _merge_tier(
             selected, pool, profile, clinvar_ids, "medium", NATIVE_MC_SCORE
         )
-    elif target_n > 0 and len(selected) < target_n - 5:
+    elif target_n > 0 and len(selected) < target_n - 3:
         selected = _merge_tier(
-            selected, pool, profile, clinvar_ids, "medium", 14.0
+            selected, pool, profile, clinvar_ids, "medium", 12.0
         )
 
     if len(selected) == 0:
@@ -264,9 +334,16 @@ def native_select_variants(
             selected, pool, profile, clinvar_ids, "relaxed", 0.0
         )
 
+    selected = _expand_indel_recall(selected, pool, profile, clinvar_ids)
+
     if target_n > 0 and len(selected) < target_n:
         selected = _expand_to_curriculum_target(
             selected, pool, target_n, profile, clinvar_ids
+        )
+
+    if len(selected) == 0 and pool:
+        selected = emergency_select_variants(
+            pool, region_start, region_end, profile, clinvar_ids, max_n=target_n or 28
         )
 
     selected = _apply_cap(selected, clinvar_ids, trim_max)

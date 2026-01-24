@@ -105,6 +105,22 @@ class Miner(BaseMinerNeuron):
                     )
                     with open(final_vcf) as fh:
                         vcf_content = fh.read()
+                    n_try = sum(
+                        1
+                        for line in vcf_content.splitlines()
+                        if line and not line.startswith("#")
+                    )
+                    if n_try == 0 and os.environ.get(
+                        "NIOME_DISABLE_PIPELINE_RETRY", ""
+                    ).strip().lower() not in ("1", "true", "yes"):
+                        bt.logging.warning(
+                            f"Task {task.task_id}: zero variants — pipeline retry"
+                        )
+                        final_vcf, _ = await asyncio.to_thread(
+                            run_pipeline, task, work_dir
+                        )
+                        with open(final_vcf) as fh:
+                            vcf_content = fh.read()
                     cftr_annotations = await asyncio.to_thread(
                         build_cftr_annotations, final_vcf
                     )
