@@ -19,17 +19,30 @@ def test_het_from_af():
     assert gt_from_read_call(c) == "0/1"
 
 
-def test_indel_hom_lower_threshold():
+def test_indel_hom_at_058():
     c = ReadCall(
         pos=1,
         ref="AT",
         alt="A",
         qual=20,
         gt="0/1",
-        alt_ad=24,
+        alt_ad=30,
         dp=50,
     )
     assert gt_from_read_call(c) == "1/1"
+
+
+def test_indel_het_below_hom_threshold():
+    c = ReadCall(
+        pos=1,
+        ref="AT",
+        alt="A",
+        qual=20,
+        gt="0/1",
+        alt_ad=22,
+        dp=50,
+    )
+    assert gt_from_read_call(c) == "0/1"
 
 
 def test_fallback_mpileup_hom():

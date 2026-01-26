@@ -19,17 +19,16 @@ from niome_subnet.genomics.task_profile import (
     ultra_scoring_core,
 )
 
-METHOD_ID = "niome-native-2026-05-23-v9"
+METHOD_ID = "niome-native-2026-05-23-v10"
 
 # Upper safety trim only (5.21.03 truth = 25); never force a minimum.
 NATIVE_COUNT_TRIM_MAX = 34
-NATIVE_MAX_ALLELE = 52
+NATIVE_MAX_ALLELE = 48
 NATIVE_DEDUPE_BP = 12
 
-# Medium tier: when strict pool is thin vs curriculum target (recall + count).
-NATIVE_RECALL_STRICT_MAX = 4
-NATIVE_MC_SCORE = 18.0
-NATIVE_INDEL_MC_SCORE = 8.0
+# Medium tier: only when almost nothing passes strict (v9 was too aggressive).
+NATIVE_RECALL_STRICT_MAX = 2
+NATIVE_MC_SCORE = 22.0
 
 
 def _allele_len(ref: str, alt: str) -> int:
@@ -108,19 +107,12 @@ def _passes_gate(
         min_ad = 1
 
     if not _is_snp(call.ref, call.alt):
-        if tier == "curriculum":
-            if call.alt_ad < 1 and call.qual < 6.0 and not has_cv:
-                return False
-        elif tier == "medium":
-            if call.alt_ad < 2 and call.qual < 8.0 and not has_cv:
-                return False
-        else:
-            if call.alt_ad < 2 and not has_cv:
-                return False
-            if call.qual < 8.0 and not has_cv:
-                return False
-            if call.dp < max(6, profile.indel_min_dp - 3) and call.alt_ad < 4:
-                return False
+        if call.alt_ad < 3 and not has_cv:
+            return False
+        if call.qual < 10.0 and not has_cv:
+            return False
+        if call.dp < profile.indel_min_dp and call.alt_ad < 5:
+            return False
 
     if not call.pass_filter and call.qual < min_qual:
         return False
@@ -201,11 +193,12 @@ def _sort_curriculum_fill(
     calls: List[ReadCall],
     clinvar_ids: Dict[Tuple[int, str, str], str],
 ) -> List[ReadCall]:
-    """Prefer indels and high evidence when filling toward curriculum target."""
+    """High evidence first; SNPs rank above complex indels (v9 indel-first hurt 5.23.02)."""
 
-    def key(c: ReadCall) -> Tuple[int, float]:
-        indel = 0 if _is_snp(c.ref, c.alt) else 1
-        return (indel, native_evidence_score(c, clinvar_ids))
+    def key(c: ReadCall) -> Tuple[float, float]:
+        snp = 1.0 if _is_snp(c.ref, c.alt) else 0.0
+        complexity = float(len(c.ref) + len(c.alt))
+        return (native_evidence_score(c, clinvar_ids) + snp * 40.0, -complexity)
 
     return sorted(calls, key=key, reverse=True)
 
@@ -232,27 +225,6 @@ def _expand_to_curriculum_target(
             break
         selected.append(call)
     return _dedupe(selected, NATIVE_DEDUPE_BP)
-
-
-def _expand_indel_recall(
-    selected: List[ReadCall],
-    pool: List[ReadCall],
-    profile: TaskProfile,
-    clinvar_ids: Dict[Tuple[int, str, str], str],
-) -> List[ReadCall]:
-    """Pull indels from pool with softer gates before curriculum fill."""
-    have = {(x.pos, x.ref, x.alt) for x in selected}
-    indels = [
-        c
-        for c in pool
-        if (c.pos, c.ref, c.alt) not in have
-        and not _is_snp(c.ref, c.alt)
-        and _passes_gate(c, profile, clinvar_ids, "medium")
-        and native_evidence_score(c, clinvar_ids) >= NATIVE_INDEL_MC_SCORE
-    ]
-    if not indels:
-        return selected
-    return _dedupe(selected + _sort_curriculum_fill(indels, clinvar_ids), NATIVE_DEDUPE_BP)
 
 
 def emergency_select_variants(
@@ -324,17 +296,15 @@ def native_select_variants(
         selected = _merge_tier(
             selected, pool, profile, clinvar_ids, "medium", NATIVE_MC_SCORE
         )
-    elif target_n > 0 and len(selected) < target_n - 3:
+    elif target_n > 0 and len(selected) < target_n - 5:
         selected = _merge_tier(
-            selected, pool, profile, clinvar_ids, "medium", 12.0
+            selected, pool, profile, clinvar_ids, "medium", 14.0
         )
 
     if len(selected) == 0:
         selected = _merge_tier(
             selected, pool, profile, clinvar_ids, "relaxed", 0.0
         )
-
-    selected = _expand_indel_recall(selected, pool, profile, clinvar_ids)
 
     if target_n > 0 and len(selected) < target_n:
         selected = _expand_to_curriculum_target(

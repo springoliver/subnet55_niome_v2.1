@@ -1,7 +1,7 @@
 # NIOME Native method
 
-**Revision:** `niome-native-2026-05-23-v9`  
-**Module:** `niome_subnet/genomics/evidence_selection.py`, `gt_tuning.py`
+**Revision:** `niome-native-2026-05-23-v10`  
+**Module:** `niome_subnet/genomics/evidence_selection.py`, `gt_tuning.py`, `read_calling.py`
 
 This is the proprietary miner method — not copied from top-miner VCFs or fixed oracle position lists. It is calibrated **offline** from manager `real_correct_result` truth panels (5.21.01–03) and runs **only on read evidence** at task time.
 
@@ -27,9 +27,10 @@ Implications encoded in Native (not as runtime position lists):
 - Ultra-wide CFTR (~190 kb): `-q 5 -Q 5` mpileup + `--indels-2.0` when bcftools ≥ 1.16 (auto-detected; older bcftools uses retry/indel passes only), `max_indel_len=48`, 12 bp dedupe.
 - v6 pipeline: third indel pass (`-q 1 -Q 1`), indel-aware VCF pick, merge supplemental VCFs into call pool.
 - v7/v9 ultra_wide **curriculum target 30**: expand read-backed pool toward ~30 variants (subnet panel trend 20→22→29); not oracle positions. Override: `NIOME_CURRICULUM_TARGET=0` or `32`.
-- v9 **GT tuning** (`gt_tuning.py`): hom/het from AD (default hom AF ≥0.52, indel hom ≥0.45); env `NIOME_GT_HOM_AF`, `NIOME_GT_INDEL_HOM_AF`.
-- v9 **indel recall**: softer indel gates, `_expand_indel_recall`, merge all supplemental VCFs, emergency mpileup if zero calls.
-- v9 **zero submit guard**: `emergency_select_variants` + miner pipeline retry if first pass returns 0 variants.
+- v10 **GT** (revert v9): hom AF **≥0.58**, het **≥0.20** — v9’s 0.52/0.45 over-called **1/1** and lost vs v5 on 5.23.02.
+- v10 **indel representation**: `collapse_indels_at_position` prefers simpler REF/ALT at same POS (v9 merged all VCF pools → complex wrong indels).
+- v10 **pipeline**: supplemental VCFs only when indel-rich (not entire pool merge).
+- **Zero submit guard** (kept): emergency mpileup + `emergency_select_variants` + miner retry.
 - Noise band `117504200–117504400`: **score penalty only** (v5; 5.22.03 truth has real variants at 117504296 / 117504400).
 - Position-aware relaxed thresholds at truth edge/tail (via `task_profile.thresholds_for_position`).
 
@@ -62,7 +63,7 @@ Native targets high recall with controlled FPs so F1 and count_penalty both stay
 ## Deploy checklist
 
 1. Sync `niome_subnet/genomics/` + `neurons/miner.py` to miner hosts.
-2. Restart miner (PM2); confirm log: `rev=niome-native-2026-05-23-v9`, `curriculum_target=30`, `submitted` ~24–30 when mpileup pool allows.
+2. Restart miner (PM2); confirm log: `rev=niome-native-2026-05-23-v10`, `curriculum_target=30`, `submitted` ~24–30 when mpileup pool allows.
 3. Linux: `bwa`, `bcftools`, `samtools` on PATH; `NIOME_USE_HG38=1` (default).
 4. Offline check: `python tests/benchmark_native_truth.py`.
 5. Full pipeline (needs BAM): run on `Results/*/real_correct_result/read_*.fq` when tools available.
@@ -75,8 +76,8 @@ Native targets high recall with controlled FPs so F1 and count_penalty both stay
 | `NIOME_VCF_DOT_ID`  | 1       | Use `.` for non-ClinVar IDs       |
 | `NIOME_BWA_THREADS` | 8       | Alignment threads                |
 | `NIOME_CURRICULUM_TARGET` | 30 (ultra_wide default) | Soft submit goal; `0` disables |
-| `NIOME_GT_HOM_AF` | 0.52 | Hom-alt threshold from AD/DP |
-| `NIOME_GT_INDEL_HOM_AF` | 0.45 | Indel hom-alt threshold |
+| `NIOME_GT_HOM_AF` | 0.58 | Hom-alt threshold from AD/DP |
+| `NIOME_GT_HET_AF` | 0.20 | Het threshold from AD/DP |
 | `NIOME_DISABLE_PIPELINE_RETRY` | off | Set `1` to skip second pipeline pass on 0 variants |
 
 Do **not** set `NIOME_METHOD=ultra4` — production uses Native only via `select_read_variants`.

@@ -13,8 +13,8 @@ PROFILES = _tp.PROFILES
 ReadCall = _rt.ReadCall
 
 
-def test_v9_method_id():
-    assert "v9" in METHOD_ID
+def test_v10_method_id():
+    assert "v10" in METHOD_ID
 
 
 def test_emergency_select_from_pool():

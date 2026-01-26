@@ -287,13 +287,12 @@ def _pick_best_vcf(
     supplemental: List[str] = []
     if profile.name == "ultra_wide":
         for _, path, n_sel, _, label, n_indel in scored[1:]:
-            if path == best_path:
+            if path == best_path or n_indel == 0:
                 continue
-            if n_indel > 0 or n_sel > 0:
+            if n_indel > best_indel:
                 supplemental.append(path)
                 bt.logging.info(
-                    f"[pipeline] supplemental merge {label} ({path}) "
-                    f"sel={n_sel} indels={n_indel}"
+                    f"[pipeline] supplemental merge {label} ({path}) indels={n_indel}"
                 )
 
     return best_path, best_n, best_coords, supplemental
@@ -449,13 +448,9 @@ def call_variants_with_fallback(
             best_n = 0
             supplemental = []
 
-    pool_paths = _collect_pool_paths(candidates)
-    merge_paths = [p for p in pool_paths if p != best_path]
-    if merge_paths:
-        supplemental = list(dict.fromkeys(supplemental + merge_paths))
     bt.logging.info(
         f"[pipeline] selected {best_path} with {best_n} in-window calls "
-        f"pool_vcfs={len(pool_paths)} supplemental={len(supplemental)}"
+        f"supplemental={len(supplemental)}"
     )
     return best_path, best_n, best_coords, supplemental
 

@@ -171,21 +171,54 @@ def vcf_raw_stats_in_region(
     return len(calls), count_indels_in_calls(calls)
 
 
+def _is_snp_allele(ref: str, alt: str) -> bool:
+    return (
+        len(ref) == 1
+        and len(alt) == 1
+        and ref not in (".", "N")
+        and alt not in (".", "N")
+    )
+
+
+def _allele_pick_rank(call: ReadCall) -> Tuple[float, float, float]:
+    """Higher is better. At same POS prefer simpler indel (5.23.02 v5 beat v9)."""
+    score = call.qual + call.alt_ad * 4.0
+    complexity = float(len(call.ref) + len(call.alt))
+    if _is_snp_allele(call.ref, call.alt):
+        return (100000.0 + score, 0.0, call.qual)
+    return (-complexity, score, call.qual)
+
+
+def collapse_indels_at_position(calls: List[ReadCall]) -> List[ReadCall]:
+    """One variant per position when multiple indel representations exist."""
+    by_pos: Dict[int, ReadCall] = {}
+    for call in calls:
+        prev = by_pos.get(call.pos)
+        if prev is None or _allele_pick_rank(call) > _allele_pick_rank(prev):
+            by_pos[call.pos] = call
+    out = list(by_pos.values())
+    out.sort(key=lambda c: c.pos)
+    return out
+
+
 def merge_read_call_pools(
     pools: List[List[ReadCall]],
 ) -> List[ReadCall]:
-    """Dedupe by (pos, ref, alt); keep highest QUAL+AD support."""
+    """Dedupe by (pos, ref, alt); then collapse conflicting indels at same POS."""
     best: Dict[Tuple[int, str, str], ReadCall] = {}
     for pool in pools:
         for call in pool:
             key = (call.pos, call.ref.upper(), call.alt.upper())
             prev = best.get(key)
-            score = call.qual + call.alt_ad * 4
-            if prev is None or score > prev.qual + prev.alt_ad * 4:
+            if prev is None or _allele_pick_rank(call) > _allele_pick_rank(prev):
                 best[key] = call
-    out = list(best.values())
-    out.sort(key=lambda c: c.pos)
-    return out
+    merged = list(best.values())
+    collapsed = collapse_indels_at_position(merged)
+    if len(collapsed) < len(merged):
+        bt.logging.info(
+            f"[read_calling] indel_pos_collapse {len(merged)} -> {len(collapsed)}"
+        )
+    return collapsed
 
 
 def count_calls_in_region(
