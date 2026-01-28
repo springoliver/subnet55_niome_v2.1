@@ -8,6 +8,7 @@ and to trim when mpileup produces too many candidates.
 Calibrated offline from manager truth (5.21.01–03); no position oracle lists.
 """
 
+import os
 from typing import Dict, List, Optional, Set, Tuple
 
 from niome_subnet.genomics.read_types import ReadCall, gt_from_read_call
@@ -20,6 +21,9 @@ from niome_subnet.genomics.task_profile import (
 )
 
 METHOD_ID = "niome-native-2026-05-23-v10"
+_FLEET_REV = os.environ.get("NIOME_ACTIVE_STRATEGY_REV", "").strip()
+if _FLEET_REV:
+    METHOD_ID = f"niome-native-2026-05-23-v10+{_FLEET_REV}"
 
 # Upper safety trim only (5.21.03 truth = 25); never force a minimum.
 NATIVE_COUNT_TRIM_MAX = 34
@@ -29,6 +33,15 @@ NATIVE_DEDUPE_BP = 12
 # Medium tier: only when almost nothing passes strict (v9 was too aggressive).
 NATIVE_RECALL_STRICT_MAX = 2
 NATIVE_MC_SCORE = 22.0
+
+
+def _recall_aggressive() -> bool:
+    return os.environ.get("NIOME_NATIVE_RECALL", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "high",
+    )
 
 
 def _allele_len(ref: str, alt: str) -> int:
@@ -296,7 +309,9 @@ def native_select_variants(
         selected = _merge_tier(
             selected, pool, profile, clinvar_ids, "medium", NATIVE_MC_SCORE
         )
-    elif target_n > 0 and len(selected) < target_n - 5:
+    elif target_n > 0 and len(selected) < target_n - (
+        3 if _recall_aggressive() else 5
+    ):
         selected = _merge_tier(
             selected, pool, profile, clinvar_ids, "medium", 14.0
         )

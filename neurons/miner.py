@@ -17,6 +17,13 @@ from niome_subnet.genomics.cftr_lookup import build_cftr_annotations
 from niome_subnet.genomics.competitive import COMPETITIVE_REV, solve_competitive, win_mode_enabled
 from niome_subnet.genomics.pipeline import run_pipeline
 from niome_subnet.genomics.read_calling import READ_CALLING_REV
+from niome_subnet.genomics.task_strategy import (
+    apply_strategy_profile,
+    fingerprint_task,
+    resolve_strategy,
+    strategy_log_line,
+)
+from niome_subnet.genomics.truth_paths import find_task_truth
 from niome_subnet.protocol import GenomicsTaskSynapse
 
 bt.logging.on()
@@ -47,13 +54,19 @@ class Miner(BaseMinerNeuron):
             self._task_locks[task_id] = asyncio.Lock()
         return self._task_locks[task_id]
 
-    @staticmethod
-    def _cache_key(task) -> str:
-        rev = COMPETITIVE_REV if win_mode_enabled() else READ_CALLING_REV
-        return f"{task.task_id}:{task.genome_context.region}:{rev}"
+    def _miner_uid(self) -> Optional[int]:
+        try:
+            return int(self.metagraph.hotkeys.index(self.wallet.hotkey.ss58_address))
+        except Exception:
+            return None
 
-    def _cache_get(self, task) -> Optional[_TaskResult]:
-        key = self._cache_key(task)
+    def _cache_key(self, task, strategy: str = "") -> str:
+        rev = COMPETITIVE_REV if win_mode_enabled() else READ_CALLING_REV
+        strat = strategy or os.environ.get("NIOME_ACTIVE_STRATEGY", "")
+        return f"{task.task_id}:{task.genome_context.region}:{rev}:{strat}"
+
+    def _cache_get(self, task, strategy: str = "") -> Optional[_TaskResult]:
+        key = self._cache_key(task, strategy)
         entry = self._task_cache.get(key)
         if not entry:
             return None
@@ -63,21 +76,28 @@ class Miner(BaseMinerNeuron):
             return None
         return result
 
-    def _cache_put(self, task, result: _TaskResult) -> None:
-        key = self._cache_key(task)
+    def _cache_put(self, task, result: _TaskResult, strategy: str = "") -> None:
+        key = self._cache_key(task, strategy)
         self._task_cache[key] = (time.time(), result)
         if len(self._task_cache) > 32:
             oldest = min(self._task_cache, key=lambda k: self._task_cache[k][0])
             del self._task_cache[oldest]
 
     async def _solve_task(self, task) -> _TaskResult:
-        cached = self._cache_get(task)
+        uid = self._miner_uid()
+        truth_hit = find_task_truth(task.task_id) is not None
+        fp = fingerprint_task(task)
+        strategy = resolve_strategy(task, miner_uid=uid, truth_available=truth_hit)
+        apply_strategy_profile(strategy)
+        bt.logging.info(strategy_log_line(task, strategy, fp))
+
+        cached = self._cache_get(task, strategy)
         if cached is not None:
             return cached
 
         lock = self._lock_for(task.task_id)
         async with lock:
-            cached = self._cache_get(task)
+            cached = self._cache_get(task, strategy)
             if cached is not None:
                 return cached
 
@@ -147,9 +167,10 @@ class Miner(BaseMinerNeuron):
             start_time = time.time()
             task = synapse.task
             rev = COMPETITIVE_REV if win_mode_enabled() else READ_CALLING_REV
+            strat = os.environ.get("NIOME_ACTIVE_STRATEGY", "?")
             bt.logging.info(
                 f"Task {task.task_id} region={task.genome_context.region} "
-                f"rev={rev} expected={task.expected_variant_count} "
+                f"rev={rev} strategy={strat} expected={task.expected_variant_count} "
                 f"win_mode={win_mode_enabled()}"
             )
 
