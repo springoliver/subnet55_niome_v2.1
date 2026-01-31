@@ -78,6 +78,25 @@ python -m pytest tests/test_task_strategy.py -q
 3. After round: `python tests/analyze_user_miners.py`
 4. Compare your best per band vs `best_native` in `analyze_fleet_strategy.py` output.
 
+### PM2 deploy (Vultr)
+
+`pm2 reload` **does not** fix a wrong `cwd`. If error logs mention
+`/root/subnet-niome-429` or `/root/subnet-niome-win`, delete and restart:
+
+```bash
+cd /root/subnet-niome && git pull
+chmod +x scripts/pm2-fleet-deploy.sh
+bash scripts/pm2-fleet-deploy.sh
+```
+
+Confirm boot line in logs (`NIOME miner boot repo=/root/subnet-niome …`) and
+`Miner running…` around line **~230** in `neurons/miner.py` (not ~204).
+
+```bash
+pm2 describe spring01 | grep -E "exec cwd|script path|NIOME_STRATEGY"
+pm2 logs spring01 --lines 40 --nostream | grep -E "NIOME miner boot|strategy=|Task "
+```
+
 ## Honest limits
 
 - **Cannot beat oracle every round** without per-task truth.

@@ -220,6 +220,20 @@ class Miner(BaseMinerNeuron):
 
 
 if __name__ == "__main__":
+    uid_overrides = [
+        f"{k}={os.environ[k]}"
+        for k in sorted(os.environ)
+        if k.startswith("NIOME_UID_STRATEGY_")
+    ]
+    bt.logging.info(
+        f"NIOME miner boot repo={PROJECT_ROOT} cwd={os.getcwd()} "
+        f"strategy={os.environ.get('NIOME_STRATEGY', '?')} "
+        f"win_mode={win_mode_enabled()} "
+        f"results={os.environ.get('NIOME_RESULTS_ROOT', '?')} "
+        f"truth={os.environ.get('NIOME_TRUTH_DIR', '?')} "
+        f"rev={READ_CALLING_REV} "
+        f"uid_overrides={uid_overrides or 'none'}"
+    )
     with Miner() as miner:
         while True:
             bt.logging.info(f"Miner running… {time.time()}")
