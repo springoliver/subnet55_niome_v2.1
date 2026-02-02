@@ -7,7 +7,7 @@ Live example (d36bc530): chr7:117480000-117670000 (~190 kb), expected_variant_co
 
 import os
 from dataclasses import dataclass
-from typing import Tuple
+from typing import Optional, Tuple
 
 # Region length thresholds (bp)
 ULTRA_WIDE_MIN = 150_000
@@ -108,6 +108,32 @@ def parse_region(region: str) -> Tuple[str, int, int]:
     return chrom, int(start), int(end)
 
 
+def _curriculum_from_challenge_db(band: str) -> Optional[int]:
+    """Load historical median target from Results/niome_challenge_db if built."""
+    if os.environ.get("NIOME_USE_CHALLENGE_DB", "1").strip().lower() in (
+        "0",
+        "false",
+        "no",
+    ):
+        return None
+    try:
+        root = os.environ.get("NIOME_RESULTS_ROOT", "").strip()
+        if not root:
+            return None
+        cal_path = os.path.join(
+            root, "niome_challenge_db", "training", "strategy_calibration.json"
+        )
+        if not os.path.isfile(cal_path):
+            return None
+        import json
+
+        cal = json.load(open(cal_path, encoding="utf-8"))
+        entry = cal.get(band) or {}
+        return int(entry.get("curriculum_target_suggested", 0)) or None
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+
+
 def curriculum_target_for_profile(profile: TaskProfile) -> int:
     """
     Soft submit-count goal for ultra_wide (improves count_penalty vs rising truth N).
@@ -122,6 +148,10 @@ def curriculum_target_for_profile(profile: TaskProfile) -> int:
         except ValueError:
             pass
     if profile.name == "ultra_wide":
+        band = os.environ.get("NIOME_ACTIVE_BAND", "ultra").strip() or "ultra"
+        db_target = _curriculum_from_challenge_db(band)
+        if db_target:
+            return db_target
         return ULTRA_CURRICULUM_TARGET
     return 0
 

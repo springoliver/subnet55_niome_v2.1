@@ -16,10 +16,11 @@ from niome_subnet.base.miner import BaseMinerNeuron
 from niome_subnet.genomics.cftr_lookup import build_cftr_annotations
 from niome_subnet.genomics.competitive import COMPETITIVE_REV, solve_competitive, win_mode_enabled
 from niome_subnet.genomics.pipeline import run_pipeline
-from niome_subnet.genomics.read_calling import READ_CALLING_REV
+from niome_subnet.genomics.read_calling import get_read_calling_rev
 from niome_subnet.genomics.task_strategy import (
     apply_strategy_profile,
     fingerprint_task,
+    pipeline_fallback_strategy,
     resolve_strategy,
     strategy_log_line,
 )
@@ -61,7 +62,7 @@ class Miner(BaseMinerNeuron):
             return None
 
     def _cache_key(self, task, strategy: str = "") -> str:
-        rev = COMPETITIVE_REV if win_mode_enabled() else READ_CALLING_REV
+        rev = COMPETITIVE_REV if win_mode_enabled() else get_read_calling_rev()
         strat = strategy or os.environ.get("NIOME_ACTIVE_STRATEGY", "")
         return f"{task.task_id}:{task.genome_context.region}:{rev}:{strat}"
 
@@ -88,7 +89,17 @@ class Miner(BaseMinerNeuron):
         truth_hit = find_task_truth(task.task_id) is not None
         fp = fingerprint_task(task)
         strategy = resolve_strategy(task, miner_uid=uid, truth_available=truth_hit)
+        if strategy == "win" and not truth_hit:
+            fallback = pipeline_fallback_strategy(
+                strategy, fp.predicted_band, truth_hit
+            )
+            bt.logging.warning(
+                f"[strategy] win configured but no truth for {task.task_id[:8]}… "
+                f"— pipeline fallback={fallback}"
+            )
+            strategy = fallback
         apply_strategy_profile(strategy)
+        os.environ["NIOME_ACTIVE_BAND"] = fp.predicted_band
         bt.logging.info(strategy_log_line(task, strategy, fp))
 
         cached = self._cache_get(task, strategy)
@@ -105,7 +116,7 @@ class Miner(BaseMinerNeuron):
                 vcf_content = None
                 cftr_annotations = None
 
-                if win_mode_enabled():
+                if truth_hit and win_mode_enabled():
                     competitive = await asyncio.to_thread(
                         solve_competitive,
                         task,
@@ -116,7 +127,7 @@ class Miner(BaseMinerNeuron):
                     if competitive:
                         vcf_content, cftr_annotations = competitive
                         bt.logging.info(
-                            f"Task {task.task_id} rev={COMPETITIVE_REV} (win mode)"
+                            f"Task {task.task_id} rev={COMPETITIVE_REV} (truth win)"
                         )
 
                 if vcf_content is None:
@@ -166,15 +177,22 @@ class Miner(BaseMinerNeuron):
         try:
             start_time = time.time()
             task = synapse.task
-            rev = COMPETITIVE_REV if win_mode_enabled() else READ_CALLING_REV
-            strat = os.environ.get("NIOME_ACTIVE_STRATEGY", "?")
+            strat = os.environ.get("NIOME_STRATEGY", "?")
             bt.logging.info(
                 f"Task {task.task_id} region={task.genome_context.region} "
-                f"rev={rev} strategy={strat} expected={task.expected_variant_count} "
-                f"win_mode={win_mode_enabled()}"
+                f"configured={strat} expected={task.expected_variant_count}"
             )
 
             result = await self._solve_task(task)
+            rev = (
+                COMPETITIVE_REV
+                if result.cftr_annotations and win_mode_enabled()
+                else get_read_calling_rev()
+            )
+            active = os.environ.get("NIOME_ACTIVE_STRATEGY", "?")
+            bt.logging.info(
+                f"Task {task.task_id} active_strategy={active} rev={rev}"
+            )
             synapse.vcf_content = result.vcf_content
             synapse.cftr_annotations = result.cftr_annotations
 
@@ -231,7 +249,7 @@ if __name__ == "__main__":
         f"win_mode={win_mode_enabled()} "
         f"results={os.environ.get('NIOME_RESULTS_ROOT', '?')} "
         f"truth={os.environ.get('NIOME_TRUTH_DIR', '?')} "
-        f"rev={READ_CALLING_REV} "
+        f"rev={get_read_calling_rev()} "
         f"uid_overrides={uid_overrides or 'none'}"
     )
     with Miner() as miner:

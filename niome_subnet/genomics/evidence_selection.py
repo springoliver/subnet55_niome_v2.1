@@ -21,9 +21,6 @@ from niome_subnet.genomics.task_profile import (
 )
 
 METHOD_ID = "niome-native-2026-05-23-v10"
-_FLEET_REV = os.environ.get("NIOME_ACTIVE_STRATEGY_REV", "").strip()
-if _FLEET_REV:
-    METHOD_ID = f"niome-native-2026-05-23-v10+{_FLEET_REV}"
 
 # Upper safety trim only (5.21.03 truth = 25); never force a minimum.
 NATIVE_COUNT_TRIM_MAX = 34

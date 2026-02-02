@@ -140,7 +140,7 @@ module.exports = {
       hotkey: "spring04",
       uid: 235,
       port: 8104,
-      strategy: "high_recall",
+      strategy: "win",
       forceValidatorPermit: true,
     }),
     minerApp({
@@ -164,19 +164,19 @@ module.exports = {
       forceValidatorPermit: true,
     }),
     minerApp({
+      name: "spring07",
+      hotkey: "spring07",
+      uid: 9,
+      port: 8111,
+      strategy: "v10",
+    }),
+    minerApp({
       name: "spring08",
       hotkey: "spring08",
       uid: 97,
       port: 8108,
       strategy: "v5_style",
       forceValidatorPermit: true,
-    }),
-    minerApp({
-      name: "spring07",
-      hotkey: "spring07",
-      uid: 9,
-      port: 8111,
-      strategy: "v10",
     }),
     minerApp({
       name: "spring09",

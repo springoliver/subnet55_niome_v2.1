@@ -1,116 +1,111 @@
 #!/usr/bin/env python3
 """
-Review past Results/ rounds: task band, oracle vs native #1, your fleet gap.
+Review fleet vs native/oracle using full challenge DB (all Results/ history).
 
-Run: python tests/analyze_fleet_strategy.py
+Run:
+  python scripts/build_challenge_db.py
+  python tests/analyze_fleet_strategy.py
 """
+from __future__ import annotations
+
 import json
-import re
-from collections import Counter
+import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1] / "Results"
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS = ROOT / "Results"
+
+
+def _bootstrap():
+    import types
+
+    ns_pkg = types.ModuleType("niome_subnet")
+    ns_pkg.__path__ = [str(ROOT / "niome_subnet")]
+    ana_pkg = types.ModuleType("niome_subnet.analysis")
+    ana_pkg.__path__ = [str(ROOT / "niome_subnet" / "analysis")]
+    sys.modules["niome_subnet"] = ns_pkg
+    sys.modules["niome_subnet.analysis"] = ana_pkg
 USER_UIDS = {139, 71, 50, 99, 209, 235, 226, 124, 9, 97, 217, 36, 92, 225, 38, 155}
-VALIDATORS = {119, 154, 58}
-
-# Map oracle site count → band → recommended strategy
-def band(n: int) -> str:
-    if n <= 14:
-        return "low"
-    if n <= 22:
-        return "mid"
-    if n <= 29:
-        return "high"
-    return "ultra"
 
 
-def strategy_for_band(b: str) -> str:
-    return {"low": "v5_style", "mid": "v10", "high": "high_recall", "ultra": "high_recall"}[b]
+def _load_rounds_from_db():
+    _bootstrap()
+    from niome_subnet.analysis.challenge_db import load_manifest
 
-
-def parse_panel(log: str):
-    if "Miner VCF" not in log:
-        return [], "empty"
-    rows = []
-    for line in log.split("Miner VCF\n", 1)[1].splitlines():
-        if line.startswith("chr7"):
-            q = line.split("\t")
-            rows.append((int(q[1]), q[3], q[4]))
-    if "CLNDN" in log or "ONCDN" in log:
-        cls = "oracle"
-    elif "niome-native" in log or "niome_miner" in log:
-        cls = "native"
-    else:
-        cls = "other"
-    return rows, cls
+    manifest = load_manifest(RESULTS)
+    rounds = []
+    for meta in manifest["rounds"]:
+        path = RESULTS / "niome_challenge_db" / "rounds" / f"{meta['key']}.json"
+        rounds.append(json.loads(path.read_text(encoding="utf-8")))
+    return rounds
 
 
 def main():
-    rounds = sorted(
-        d.name for d in ROOT.iterdir() if d.is_dir() and (d / "miner.json").exists()
-    )
-    print("=" * 72)
-    print("NIOME fleet strategy review (historical Results/)")
-    print("=" * 72)
+    try:
+        rounds = _load_rounds_from_db()
+        print("=" * 72)
+        print(f"NIOME fleet review — FULL DATABASE ({len(rounds)} rounds)")
+        print("=" * 72)
+    except FileNotFoundError:
+        print("Challenge DB missing. Run: python scripts/build_challenge_db.py")
+        sys.exit(1)
 
-    by_band = Counter()
+    wins = 0
     for rd in rounds:
-        mj = ROOT / rd / "miner.json"
-        tj = ROOT / rd / "task.json"
-        if not tj.exists():
-            continue
-        task_id = json.loads(tj.read_text(encoding="utf-8")).get("task_id", "")[:8]
-        items = json.loads(mj.read_text(encoding="utf-8", errors="replace"))
-        items = items if isinstance(items, list) else items.get("items", items)
-        pool = [it for it in items if it.get("validator_uid") in VALIDATORS]
-        if not pool:
-            continue
-
-        top = max(pool, key=lambda x: float(x.get("final_score", 0) or 0))
-        top_rows, top_cls = parse_panel(top.get("log", ""))
-        b = band(len(top_rows))
-        by_band[b] += 1
-
-        natives = []
-        for it in pool:
-            rows, cls = parse_panel(it.get("log", ""))
-            if not rows or cls != "native":
-                continue
-            natives.append((it["miner_uid"], float(it["final_score"]), len(rows)))
-
-        natives.sort(key=lambda x: -x[1])
-        best_nat = natives[0] if natives else (None, 0.0, 0)
+        band = rd["band"]
+        rec = rd["recommended_strategy"]
+        top = rd["top_miner"]
+        nat = rd.get("native_best")
+        nat_score = nat["final_score"] if nat else 0.0
+        nat_n = nat["n_sites"] if nat else 0
 
         your_best = 0.0
         your_uid = None
-        for it in pool:
-            if it["miner_uid"] not in USER_UIDS:
+        for uid, recf in rd.get("fleet", {}).items():
+            if int(uid) not in USER_UIDS:
                 continue
-            s = float(it.get("final_score", 0) or 0)
+            s = recf["final_score"]
             if s > your_best:
                 your_best = s
-                your_uid = it["miner_uid"]
+                your_uid = int(uid)
 
-        rec = strategy_for_band(b)
-        gap = best_nat[1] - your_best if best_nat[0] else 0.0
-        beat = "YES" if your_best >= best_nat[1] - 0.001 else "no"
+        beat = your_best >= nat_score - 0.001 if nat else False
+        if beat:
+            wins += 1
+        gap = nat_score - your_best
 
-        print(f"\n{rd}  task={task_id}  band={b}  oracle_n={len(top_rows)}  -> strategy `{rec}`")
-        print(f"  oracle #1: UID {top['miner_uid']}  final={top['final_score']:.4f}  ({top_cls})")
-        if best_nat[0]:
+        truth_s = f"truth_n={rd['truth_n']}" if rd["has_truth"] else "no truth"
+        print(
+            f"\n{rd['round_path']:32s}  task={rd['task_id'][:8]}  "
+            f"band={band}  -> `{rec}`  {truth_s}"
+        )
+        print(
+            f"  top: UID {top['miner_uid']}  score={top['final_score']:.4f}  "
+            f"n={top['n_sites']}  ({top['panel_class']})"
+        )
+        if nat:
             print(
-                f"  native #1: UID {best_nat[0]}  final={best_nat[1]:.4f}  n={best_nat[2]}"
+                f"  native #1: UID {nat['miner_uid']}  score={nat_score:.4f}  n={nat_n}"
             )
-        print(f"  your best: UID {your_uid}  final={your_best:.4f}  beat_native={beat}  gap={gap:.4f}")
+        print(
+            f"  your best: UID {your_uid}  score={your_best:.4f}  "
+            f"beat_native={'YES' if beat else 'no'}  gap={gap:.4f}"
+        )
+        dups = rd.get("fleet_duplicate_panels") or []
+        if dups:
+            print(f"  fleet duplicate panels: {len(dups)} groups")
 
     print("\n" + "-" * 72)
-    print("Band frequency:", dict(by_band))
-    print("\nRecommended PM2 split (16 UIDs):")
-    print("  v5_style:     71, 38, 155, 225  (annotation / simpler indels)")
-    print("  high_recall:  209, 235, 50, 99   (30+ site rounds)")
-    print("  win:          139                 (truth dir when published)")
-    print("  v10:          remaining UIDs")
-    print("  Or NIOME_STRATEGY=auto on all with NIOME_TRUTH_DIR set")
+    print(f"Beat native #1 on {wins}/{len(rounds)} rounds (fleet UIDs)")
+    cal_path = RESULTS / "niome_challenge_db" / "training" / "strategy_calibration.json"
+    if cal_path.is_file():
+        cal = json.loads(cal_path.read_text(encoding="utf-8"))
+        print("\nHistorical curriculum targets (from all truth rounds):")
+        for band, info in cal.items():
+            print(
+                f"  {band:5s}  strategy={info['strategy']:12s}  "
+                f"target={info.get('curriculum_target_suggested')}"
+            )
 
 
 if __name__ == "__main__":

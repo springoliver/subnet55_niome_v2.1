@@ -1,0 +1,62 @@
+{
+  "low": {
+    "strategy": "v5_style",
+    "truth_site_counts": {
+      "n": 3,
+      "min": 6,
+      "max": 13,
+      "median": 12,
+      "mean": 10.33
+    },
+    "top_site_counts": {
+      "n": 10,
+      "min": 6,
+      "max": 14,
+      "median": 9,
+      "mean": 9.5
+    },
+    "curriculum_target_suggested": 12
+  },
+  "mid": {
+    "strategy": "v10",
+    "truth_site_counts": {},
+    "top_site_counts": {
+      "n": 7,
+      "min": 15,
+      "max": 22,
+      "median": 20,
+      "mean": 19.0
+    },
+    "curriculum_target_suggested": 20
+  },
+  "high": {
+    "strategy": "high_recall",
+    "truth_site_counts": {
+      "n": 1,
+      "min": 25,
+      "max": 25,
+      "median": 25,
+      "mean": 25.0
+    },
+    "top_site_counts": {
+      "n": 5,
+      "min": 11,
+      "max": 29,
+      "median": 29,
+      "mean": 24.4
+    },
+    "curriculum_target_suggested": 25
+  },
+  "ultra": {
+    "strategy": "high_recall",
+    "truth_site_counts": {},
+    "top_site_counts": {
+      "n": 2,
+      "min": 32,
+      "max": 33,
+      "median": 33,
+      "mean": 32.5
+    },
+    "curriculum_target_suggested": 33
+  }
+}

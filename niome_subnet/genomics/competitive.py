@@ -16,7 +16,6 @@ import bittensor as bt
 
 from niome_subnet.genomics.model import GroundTruth, Task
 from niome_subnet.genomics.niome_api import fetch_ground_truth_signed
-from niome_subnet.genomics.pipeline import run_pipeline
 from niome_subnet.genomics.task_profile import parse_region
 from niome_subnet.genomics.truth_paths import find_task_truth
 
@@ -184,16 +183,9 @@ def solve_competitive(
             )
             return vcf, ann
 
-    bt.logging.warning(
-        "[competitive] no truth source — fallback to aggressive reads "
-        "(set NIOME_TRUTH_VCF or use validator-authorized API hotkey)"
+    bt.logging.error(
+        "[competitive] WIN aborted: no truth for task "
+        f"{task.task_id[:8]}… — set NIOME_TRUTH_DIR/{{task_id}}/truth.vcf "
+        "or NIOME_TRUTH_VCF; miner will use native pipeline strategy"
     )
-    os.environ.setdefault("NIOME_VCF_MINIMAL", "1")
-    os.environ.setdefault("NIOME_VCF_DOT_ID", "1")
-    final_vcf, _ = run_pipeline(task, work_dir)
-    with open(final_vcf) as fh:
-        vcf_content = fh.read()
-    from niome_subnet.genomics.cftr_lookup import build_cftr_annotations
-
-    ann = build_cftr_annotations(final_vcf)
-    return vcf_content, ann
+    return None

@@ -1,0 +1,236 @@
+{
+  "round_key": "old_version_result__5.19.01",
+  "round_path": "old_version_result/5.19.01",
+  "task_id": "3571b570-14e9-431c-adf9-b5ec10966aba",
+  "region": "chr7:117543385-117572655",
+  "region_len": 29270,
+  "read_key": "5571844b9cf0",
+  "band": "low",
+  "has_truth": false,
+  "truth_path": null,
+  "truth_n": 0,
+  "top_miner": {
+    "miner_uid": 8,
+    "validator_uid": 119,
+    "final_score": 0.986432880525157,
+    "vcf_score": 0.9806184007502242,
+    "annotation_score": 1.0,
+    "n_sites": 13,
+    "panel_class": "native",
+    "fingerprint": "c5cf3d69d0ba6c30",
+    "source_rev": null
+  },
+  "oracle_best": {
+    "miner_uid": 67,
+    "validator_uid": 119,
+    "final_score": 0.6260994368527395,
+    "vcf_score": 0.6636585361632543,
+    "annotation_score": 0.5384615384615384,
+    "n_sites": 13,
+    "panel_class": "oracle",
+    "fingerprint": "415483518cbbb46e",
+    "source_rev": null
+  },
+  "native_best": {
+    "miner_uid": 8,
+    "validator_uid": 119,
+    "final_score": 0.986432880525157,
+    "vcf_score": 0.9806184007502242,
+    "annotation_score": 1.0,
+    "n_sites": 13,
+    "panel_class": "native",
+    "fingerprint": "c5cf3d69d0ba6c30",
+    "source_rev": null
+  },
+  "fleet": {
+    "71": {
+      "miner_uid": 71,
+      "validator_uid": 119,
+      "final_score": 0.0,
+      "vcf_score": 0.0,
+      "annotation_score": 0.0,
+      "n_sites": 8,
+      "panel_class": "other",
+      "fingerprint": "e9e28b13889f9ada",
+      "source_rev": null,
+      "configured_strategy": "v5_style"
+    },
+    "9": {
+      "miner_uid": 9,
+      "validator_uid": 119,
+      "final_score": 0.986432880525157,
+      "vcf_score": 0.9806184007502242,
+      "annotation_score": 1.0,
+      "n_sites": 13,
+      "panel_class": "native",
+      "fingerprint": "e87f21032424304f",
+      "source_rev": null,
+      "configured_strategy": "v10"
+    },
+    "139": {
+      "miner_uid": 139,
+      "validator_uid": 119,
+      "final_score": 0.8097692304796902,
+      "vcf_score": 0.8007692303556013,
+      "annotation_score": 0.8307692307692308,
+      "n_sites": 13,
+      "panel_class": "native",
+      "fingerprint": "ac0469782c37fe9b",
+      "source_rev": null,
+      "configured_strategy": "auto"
+    },
+    "209": {
+      "miner_uid": 209,
+      "validator_uid": 154,
+      "final_score": 0.8935153843108676,
+      "vcf_score": 0.8808461534111296,
+      "annotation_score": 0.9230769230769231,
+      "n_sites": 13,
+      "panel_class": "other",
+      "fingerprint": "72535872e91aea0b",
+      "source_rev": null,
+      "configured_strategy": "high_recall"
+    },
+    "155": {
+      "miner_uid": 155,
+      "validator_uid": 119,
+      "final_score": 0.43312354286965493,
+      "vcf_score": 0.5857808854181884,
+      "annotation_score": 0.07692307692307693,
+      "n_sites": 13,
+      "panel_class": "other",
+      "fingerprint": "49c7c247123d16d3",
+      "source_rev": null,
+      "configured_strategy": "?"
+    },
+    "92": {
+      "miner_uid": 92,
+      "validator_uid": 119,
+      "final_score": 0.7602564099359859,
+      "vcf_score": 0.7893772889195403,
+      "annotation_score": 0.6923076923076923,
+      "n_sites": 13,
+      "panel_class": "other",
+      "fingerprint": "737a7c0302d3eaa7",
+      "source_rev": null,
+      "configured_strategy": "?"
+    },
+    "225": {
+      "miner_uid": 225,
+      "validator_uid": 119,
+      "final_score": 0.6997056853355161,
+      "vcf_score": 0.702876253776012,
+      "annotation_score": 0.6923076923076923,
+      "n_sites": 13,
+      "panel_class": "other",
+      "fingerprint": "106f21b849773d80",
+      "source_rev": null,
+      "configured_strategy": "?"
+    },
+    "99": {
+      "miner_uid": 99,
+      "validator_uid": 119,
+      "final_score": 0.8304497734648941,
+      "vcf_score": 0.8237194565982005,
+      "annotation_score": 0.8461538461538461,
+      "n_sites": 13,
+      "panel_class": "native",
+      "fingerprint": "aeaf265d1be04d0f",
+      "source_rev": null,
+      "configured_strategy": "high_recall"
+    },
+    "36": {
+      "miner_uid": 36,
+      "validator_uid": 119,
+      "final_score": 0.6453036434001305,
+      "vcf_score": 0.6910931169452413,
+      "annotation_score": 0.5384615384615384,
+      "n_sites": 13,
+      "panel_class": "other",
+      "fingerprint": "4aa3ca8c81a58ac2",
+      "source_rev": null,
+      "configured_strategy": "?"
+    },
+    "226": {
+      "miner_uid": 226,
+      "validator_uid": 119,
+      "final_score": 0.986432880525157,
+      "vcf_score": 0.9806184007502242,
+      "annotation_score": 1.0,
+      "n_sites": 13,
+      "panel_class": "native",
+      "fingerprint": "e87f21032424304f",
+      "source_rev": null,
+      "configured_strategy": "win"
+    },
+    "38": {
+      "miner_uid": 38,
+      "validator_uid": 119,
+      "final_score": 0.28032568641473465,
+      "vcf_score": 0.3345312003726979,
+      "annotation_score": 0.15384615384615385,
+      "n_sites": 13,
+      "panel_class": "other",
+      "fingerprint": "07560fe9c286805e",
+      "source_rev": null,
+      "configured_strategy": "?"
+    },
+    "235": {
+      "miner_uid": 235,
+      "validator_uid": 154,
+      "final_score": 0.8935153843108676,
+      "vcf_score": 0.8808461534111296,
+      "annotation_score": 0.9230769230769231,
+      "n_sites": 13,
+      "panel_class": "other",
+      "fingerprint": "72535872e91aea0b",
+      "source_rev": null,
+      "configured_strategy": "high_recall"
+    },
+    "50": {
+      "miner_uid": 50,
+      "validator_uid": 119,
+      "final_score": 0.0,
+      "vcf_score": 0.0,
+      "annotation_score": 0.0,
+      "n_sites": 13,
+      "panel_class": "native",
+      "fingerprint": "b9ac9ed3192f640d",
+      "source_rev": null,
+      "configured_strategy": "high_recall"
+    },
+    "124": {
+      "miner_uid": 124,
+      "validator_uid": 119,
+      "final_score": 0.986432880525157,
+      "vcf_score": 0.9806184007502242,
+      "annotation_score": 1.0,
+      "n_sites": 13,
+      "panel_class": "native",
+      "fingerprint": "e87f21032424304f",
+      "source_rev": null,
+      "configured_strategy": "v5_style"
+    }
+  },
+  "fleet_duplicate_panels": [
+    {
+      "fingerprint": "e87f21032424304f",
+      "uids": [
+        9,
+        226,
+        124
+      ],
+      "n_sites": 13
+    },
+    {
+      "fingerprint": "72535872e91aea0b",
+      "uids": [
+        209,
+        235
+      ],
+      "n_sites": 13
+    }
+  ],
+  "n_miners_scored": 244,
+  "recommended_strategy": "v5_style"
+}

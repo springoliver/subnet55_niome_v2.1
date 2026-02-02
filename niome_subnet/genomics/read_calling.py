@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 import bittensor as bt
 
 from niome_subnet.genomics.cftr_lookup import ensure_clinvar_db
-from niome_subnet.genomics.evidence_selection import METHOD_ID, native_select_variants
+from niome_subnet.genomics.evidence_selection import native_select_variants
 from niome_subnet.genomics.model import Task
 from niome_subnet.genomics.read_types import ReadCall, gt_from_read_call
 from niome_subnet.genomics.task_profile import (
@@ -27,7 +27,19 @@ from niome_subnet.genomics.task_profile import (
     ultra_scoring_core,
 )
 
-READ_CALLING_REV = METHOD_ID
+BASE_READ_CALLING_REV = "niome-native-2026-05-23-v10"
+
+
+def get_read_calling_rev() -> str:
+    """Runtime revision string (fleet strategy applied in _solve_task)."""
+    fleet = os.environ.get("NIOME_ACTIVE_STRATEGY_REV", "").strip()
+    if fleet:
+        return f"{BASE_READ_CALLING_REV}+{fleet}"
+    return BASE_READ_CALLING_REV
+
+
+# Back-compat for imports; logs should call get_read_calling_rev().
+READ_CALLING_REV = BASE_READ_CALLING_REV
 
 _CHR7_LENGTH = 159345973
 _CFTR_START = 117430000
@@ -326,7 +338,7 @@ def format_vcf(calls: List[ReadCall], clinvar_ids: Dict[Tuple[int, str, str], st
     use_dot_id = os.environ.get("NIOME_VCF_DOT_ID", "1").strip() not in ("0", "false", "no")
     lines = [
         "##fileformat=VCFv4.2",
-        f"##source=niome_miner_{READ_CALLING_REV}",
+        f"##source=niome_miner_{get_read_calling_rev()}",
         f"##contig=<ID=chr7,length={_CHR7_LENGTH}>",
         '##INFO=<ID=DP,Number=1,Type=Integer,Description="Depth">',
         '##INFO=<ID=AF,Number=A,Type=Float,Description="Allele fraction">',
@@ -436,7 +448,7 @@ def build_task_vcf(
     n_indel_sub = count_indels_in_calls(selected)
     target_n = curriculum_target_for_profile(profile)
     bt.logging.info(
-        f"[read_calling] task={task.task_id[:8]}… rev={READ_CALLING_REV} "
+        f"[read_calling] task={task.task_id[:8]}… rev={get_read_calling_rev()} "
         f"profile={profile.name} region={region} len={rlen} "
         f"curriculum_target={target_n} "
         f"raw_calls={len(calls)} indels_raw={n_indel_raw} "

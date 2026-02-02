@@ -49,6 +49,15 @@ class StrategyProfile:
     env: Dict[str, str]
 
 
+# Pipeline pick modes (see pipeline._pick_best_vcf):
+#   default   — indel-weighted pick + indel-only supplemental merge
+#   recall    — maximize raw pool size; merge all candidate VCFs
+#   precision — prefer norm passes with indels (v5-style)
+_PIPELINE_DEFAULT = {
+    "NIOME_PIPELINE_PICK": "default",
+    "NIOME_PIPELINE_MERGE_POOL": "0",
+}
+
 PROFILES: Dict[str, StrategyProfile] = {
     "win": StrategyProfile(
         name="win",
@@ -57,6 +66,7 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_WIN_MODE": "1",
             "NIOME_VCF_MINIMAL": "1",
             "NIOME_VCF_DOT_ID": "1",
+            **_PIPELINE_DEFAULT,
         },
     ),
     "v10": StrategyProfile(
@@ -68,6 +78,8 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_CURRICULUM_TARGET": "30",
             "NIOME_GT_HOM_AF": "0.58",
             "NIOME_GT_HET_AF": "0.20",
+            "NIOME_MPILEUP_QUAL": "-q 2 -Q 2",
+            **_PIPELINE_DEFAULT,
         },
     ),
     "v5_style": StrategyProfile(
@@ -81,6 +93,9 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_GT_HOM_AF": "0.58",
             "NIOME_GT_HET_AF": "0.20",
             "NIOME_NATIVE_RECALL": "0",
+            "NIOME_MPILEUP_QUAL": "-q 3 -Q 3",
+            "NIOME_PIPELINE_PICK": "precision",
+            "NIOME_PIPELINE_MERGE_POOL": "0",
         },
     ),
     "high_recall": StrategyProfile(
@@ -94,6 +109,10 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_GT_HOM_AF": "0.58",
             "NIOME_GT_HET_AF": "0.18",
             "NIOME_NATIVE_RECALL": "1",
+            "NIOME_MPILEUP_QUAL": "-q 0 -Q 0",
+            "NIOME_MPILEUP_EXTRA": "--indels-2.0",
+            "NIOME_PIPELINE_PICK": "recall",
+            "NIOME_PIPELINE_MERGE_POOL": "1",
         },
     ),
 }
@@ -179,6 +198,17 @@ def resolve_strategy(
     return _BAND_TO_STRATEGY.get(fp.predicted_band, "v10")
 
 
+def pipeline_fallback_strategy(
+    strategy_name: str,
+    predicted_band: str,
+    truth_available: bool,
+) -> str:
+    """When win is configured but truth is missing, use a native pipeline strategy."""
+    if strategy_name != "win" or truth_available:
+        return strategy_name
+    return _BAND_TO_STRATEGY.get(predicted_band, "high_recall")
+
+
 def apply_strategy_profile(strategy_name: str) -> StrategyProfile:
     """Apply profile env vars for this solve (does not clear unrelated env)."""
     profile = PROFILES.get(strategy_name, PROFILES["v10"])
@@ -187,6 +217,23 @@ def apply_strategy_profile(strategy_name: str) -> StrategyProfile:
     os.environ["NIOME_ACTIVE_STRATEGY"] = profile.name
     os.environ["NIOME_ACTIVE_STRATEGY_REV"] = profile.revision_tag
     return profile
+
+
+def active_strategy_name() -> str:
+    return os.environ.get("NIOME_ACTIVE_STRATEGY", "v10").strip() or "v10"
+
+
+def pipeline_pick_mode() -> str:
+    return os.environ.get("NIOME_PIPELINE_PICK", "default").strip().lower() or "default"
+
+
+def pipeline_merge_pool() -> bool:
+    return os.environ.get("NIOME_PIPELINE_MERGE_POOL", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
 
 
 def strategy_log_line(task: Any, strategy_name: str, fp: TaskFingerprint) -> str:

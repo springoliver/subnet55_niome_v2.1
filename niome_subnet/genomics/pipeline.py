@@ -14,14 +14,19 @@ import bittensor as bt
 
 from niome_subnet.genomics.model import Task
 from niome_subnet.genomics.read_calling import (
-    READ_CALLING_REV,
     build_task_vcf,
     count_calls_in_region,
+    get_read_calling_rev,
     parse_region,
     region_length,
     vcf_raw_stats_in_region,
 )
 from niome_subnet.genomics.task_profile import TaskProfile, classify_task
+from niome_subnet.genomics.task_strategy import (
+    active_strategy_name,
+    pipeline_merge_pool,
+    pipeline_pick_mode,
+)
 
 CACHE_DIR = os.path.join(os.path.expanduser("~"), ".niome")
 REF_DIR = os.path.join(CACHE_DIR, "ref")
@@ -241,6 +246,7 @@ def _pick_best_vcf(
     Ultra-wide (v6): reward indel-rich candidates; penalize SNP-only norm when
     retry/indel pass finds indels. Compact: highest selected count wins.
     """
+    pick = pipeline_pick_mode()
     region = f"chr7:{region_start}-{region_end}"
     scored: list = []
     raw_stats: dict = {}
@@ -259,18 +265,30 @@ def _pick_best_vcf(
             f"[pipeline] {path} ({label}): selected={n_sel} raw={n_raw} indels={n_indel}"
         )
 
-        score = float(n_sel) + 60.0 * float(n_indel)
-        if profile.name == "ultra_wide":
-            if "indel" in label:
-                score += 450.0
-            if "retry" in label and n_indel > 0:
-                score += 350.0
-            if label == "norm" and n_indel == 0:
-                score -= 150.0
-            if profile.prefer_norm_vcf and label == "norm" and n_indel > 0:
-                score += 200.0
-        elif profile.prefer_norm_vcf and label == "norm":
-            score += 500.0
+        pick = pipeline_pick_mode()
+        if pick == "recall":
+            score = float(n_sel) + 0.65 * float(n_raw) + 40.0 * float(n_indel)
+            if "loose" in label or "retry" in label or "alleles" in label:
+                score += 120.0
+        elif pick == "precision":
+            score = float(n_sel) + 80.0 * float(n_indel)
+            if label == "norm" and n_indel > 0:
+                score += 400.0
+            if "loose" in label or "retry" in label:
+                score -= 80.0
+        else:
+            score = float(n_sel) + 60.0 * float(n_indel)
+            if profile.name == "ultra_wide":
+                if "indel" in label:
+                    score += 450.0
+                if "retry" in label and n_indel > 0:
+                    score += 350.0
+                if label == "norm" and n_indel == 0:
+                    score -= 150.0
+                if profile.prefer_norm_vcf and label == "norm" and n_indel > 0:
+                    score += 200.0
+            elif profile.prefer_norm_vcf and label == "norm":
+                score += 500.0
 
         scored.append((score, path, n_sel, coords, label, n_indel))
 
@@ -285,7 +303,18 @@ def _pick_best_vcf(
     )
 
     supplemental: List[str] = []
-    if profile.name == "ultra_wide":
+    merge_all = pipeline_merge_pool() or pick == "recall"
+    if merge_all:
+        for _, path, n_sel, _, label, n_indel in scored:
+            if path == best_path or path in supplemental:
+                continue
+            if n_sel > 0 or n_indel > 0:
+                supplemental.append(path)
+                bt.logging.info(
+                    f"[pipeline] pool merge {label} ({path}) "
+                    f"selected={n_sel} indels={n_indel}"
+                )
+    elif profile.name == "ultra_wide":
         for _, path, n_sel, _, label, n_indel in scored[1:]:
             if path == best_path or n_indel == 0:
                 continue
@@ -344,13 +373,19 @@ def call_variants_with_fallback(
 
     task_region_str = f"chr7:{region_start}-{region_end}"
     profile = classify_task(task_region_str)
-    mpileup_extra = resolve_mpileup_extra(profile.mpileup_extra or "")
-    primary_qual = profile.mpileup_qual
+    strat = active_strategy_name()
+    pick = pipeline_pick_mode()
+    env_qual = os.environ.get("NIOME_MPILEUP_QUAL", "").strip()
+    env_extra = os.environ.get("NIOME_MPILEUP_EXTRA", "").strip()
+    mpileup_extra = resolve_mpileup_extra(env_extra or profile.mpileup_extra or "")
+    primary_qual = env_qual or profile.mpileup_qual
     if profile.name == "ultra_wide" and not bcftools_supports_indels_20():
-        primary_qual = "-q 2 -Q 2"
+        if not env_qual:
+            primary_qual = "-q 2 -Q 2"
     bt.logging.info(
-        f"[pipeline] profile={profile.name} mpileup={primary_qual} "
-        f"extra={mpileup_extra or '(none)'}"
+        f"[pipeline] strategy={strat} pick={pick} profile={profile.name} "
+        f"mpileup={primary_qual} extra={mpileup_extra or '(none)'} "
+        f"merge_pool={pipeline_merge_pool()}"
     )
 
     raw_vcf = os.path.join(work_dir, "raw.vcf")
@@ -408,7 +443,7 @@ def call_variants_with_fallback(
             _run(
                 f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
                 f"-q 0 -Q 0 {mpileup_extra} --max-depth 12000 {bam} "
-                f"| bcftools call -A -Ov -o {raw5}",
+                f"| bcftools call -c -Ov -o {raw5}",
                 "bcftools call alleles",
             )
             norm5 = raw5.replace(".vcf", ".norm.vcf")
@@ -468,9 +503,9 @@ def run_pipeline(task: Task, work_dir: str):
 
     profile = classify_task(task_region, task.expected_variant_count)
     bt.logging.info(
-        f"[pipeline] task={task.task_id[:8]}… rev={READ_CALLING_REV} "
-        f"profile={profile.name} region={task_region} len={rlen} "
-        f"expected={task.expected_variant_count}"
+        f"[pipeline] task={task.task_id[:8]}… rev={get_read_calling_rev()} "
+        f"strategy={active_strategy_name()} profile={profile.name} "
+        f"region={task_region} len={rlen} expected={task.expected_variant_count}"
     )
 
     raw_path: Optional[str] = None

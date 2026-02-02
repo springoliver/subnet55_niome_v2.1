@@ -1,0 +1,242 @@
+[
+  {
+    "round": "5.20.02",
+    "task_id": "d36bc530",
+    "band": "mid",
+    "top_uid": 40,
+    "top_n": 15,
+    "top_class": "native",
+    "top_score": 0.9566137323122129,
+    "truth_n": 0
+  },
+  {
+    "round": "5.21.01",
+    "task_id": "44e497d3",
+    "band": "low",
+    "top_uid": 16,
+    "top_n": 13,
+    "top_class": "oracle",
+    "top_score": 0.9900374647455354,
+    "truth_n": 13
+  },
+  {
+    "round": "5.21.02",
+    "task_id": "d6ae2d09",
+    "band": "low",
+    "top_uid": 4,
+    "top_n": 11,
+    "top_class": "other",
+    "top_score": 0.9221785220801273,
+    "truth_n": 12
+  },
+  {
+    "round": "5.21.03",
+    "task_id": "8ce3e755",
+    "band": "high",
+    "top_uid": 21,
+    "top_n": 11,
+    "top_class": "native",
+    "top_score": 0.979999999685,
+    "truth_n": 25
+  },
+  {
+    "round": "5.21.04",
+    "task_id": "3af13858",
+    "band": "mid",
+    "top_uid": 167,
+    "top_n": 20,
+    "top_class": "oracle",
+    "top_score": 0.9934942884547908,
+    "truth_n": 0
+  },
+  {
+    "round": "5.22.01",
+    "task_id": "98395a2a",
+    "band": "mid",
+    "top_uid": 4,
+    "top_n": 22,
+    "top_class": "other",
+    "top_score": 0.9954227949661023,
+    "truth_n": 0
+  },
+  {
+    "round": "5.22.02",
+    "task_id": "ddc5b57a",
+    "band": "mid",
+    "top_uid": 4,
+    "top_n": 22,
+    "top_class": "other",
+    "top_score": 0.9999999997641094,
+    "truth_n": 0
+  },
+  {
+    "round": "5.22.04",
+    "task_id": "a9a4db4a",
+    "band": "high",
+    "top_uid": 167,
+    "top_n": 29,
+    "top_class": "oracle",
+    "top_score": 0.9194190812416028,
+    "truth_n": 0
+  },
+  {
+    "round": "5.23.01",
+    "task_id": "4b9ea9d3",
+    "band": "high",
+    "top_uid": 176,
+    "top_n": 24,
+    "top_class": "oracle",
+    "top_score": 0.9047803450996035,
+    "truth_n": 0
+  },
+  {
+    "round": "5.23.02",
+    "task_id": "880f988c",
+    "band": "ultra",
+    "top_uid": 114,
+    "top_n": 32,
+    "top_class": "oracle",
+    "top_score": 0.9475161711512747,
+    "truth_n": 0
+  },
+  {
+    "round": "5.23.03",
+    "task_id": "4d085724",
+    "band": "ultra",
+    "top_uid": 104,
+    "top_n": 33,
+    "top_class": "oracle",
+    "top_score": 0.9444597833189377,
+    "truth_n": 0
+  },
+  {
+    "round": "5.23.04",
+    "task_id": "d040eaab",
+    "band": "high",
+    "top_uid": 114,
+    "top_n": 29,
+    "top_class": "oracle",
+    "top_score": 0.9068225477089087,
+    "truth_n": 0
+  },
+  {
+    "round": "5.24.01",
+    "task_id": "3245a299",
+    "band": "high",
+    "top_uid": 167,
+    "top_n": 29,
+    "top_class": "oracle",
+    "top_score": 0.7748330698058576,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.14.02",
+    "task_id": "40f446dd",
+    "band": "low",
+    "top_uid": 15,
+    "top_n": 6,
+    "top_class": "native",
+    "top_score": 0.9999999994711111,
+    "truth_n": 6
+  },
+  {
+    "round": "old_version_result__5.15.01",
+    "task_id": "c5ba4b05",
+    "band": "low",
+    "top_uid": 42,
+    "top_n": 9,
+    "top_class": "other",
+    "top_score": 0.6933333331212274,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.16.01",
+    "task_id": "2d08177e",
+    "band": "low",
+    "top_uid": 229,
+    "top_n": 6,
+    "top_class": "other",
+    "top_score": 0.7428555551768892,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.16.02",
+    "task_id": "e32690ef",
+    "band": "low",
+    "top_uid": 79,
+    "top_n": 14,
+    "top_class": "native",
+    "top_score": 0.5896853308152739,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.17.01",
+    "task_id": "65aa1fc1",
+    "band": "mid",
+    "top_uid": 20,
+    "top_n": 21,
+    "top_class": "oracle",
+    "top_score": 0.9545993029403896,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.17.02",
+    "task_id": "4394e6f8",
+    "band": "mid",
+    "top_uid": 67,
+    "top_n": 16,
+    "top_class": "oracle",
+    "top_score": 0.8520416663913875,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.18.01",
+    "task_id": "a977c223",
+    "band": "mid",
+    "top_uid": 67,
+    "top_n": 17,
+    "top_class": "oracle",
+    "top_score": 0.8782823402897402,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.18.02",
+    "task_id": "ed9674c9",
+    "band": "low",
+    "top_uid": 111,
+    "top_n": 7,
+    "top_class": "other",
+    "top_score": 0.7546703292520536,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.19.01",
+    "task_id": "3571b570",
+    "band": "low",
+    "top_uid": 8,
+    "top_n": 13,
+    "top_class": "native",
+    "top_score": 0.986432880525157,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.19.03",
+    "task_id": "ab03f860",
+    "band": "low",
+    "top_uid": 59,
+    "top_n": 7,
+    "top_class": "other",
+    "top_score": 0.856428571065357,
+    "truth_n": 0
+  },
+  {
+    "round": "old_version_result__5.20.01",
+    "task_id": "b56ff3dd",
+    "band": "low",
+    "top_uid": 184,
+    "top_n": 9,
+    "top_class": "other",
+    "top_score": 0.9527396088577602,
+    "truth_n": 0
+  }
+]

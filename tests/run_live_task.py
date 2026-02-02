@@ -1,70 +1,109 @@
 #!/usr/bin/env python3
 """
-Run v3 pipeline on Results/live_task/task.json (ultra-wide live problem).
+Offline pipeline test for Results/live_task/task.json (all fleet strategies).
 
-  export PYTHONPATH="$(pwd)"
-  python setup_miner.py
   python tests/run_live_task.py
+  python tests/run_live_task.py high_recall
 """
+from __future__ import annotations
 
 import json
 import os
 import sys
 import tempfile
+import types
+from pathlib import Path
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = Path(__file__).resolve().parents[1]
+RESULTS = ROOT / "Results"
+TASK_JSON = RESULTS / "live_task" / "task.json"
+STRATEGIES = ("high_recall", "v10", "v5_style", "win")
 
-from niome_subnet.genomics.cftr_lookup import build_cftr_annotations
-from niome_subnet.genomics.model import Task
-from niome_subnet.genomics.pipeline import run_pipeline
-from niome_subnet.genomics.task_profile import classify_task, region_length
 
-TASK_JSON = os.path.join(
-    os.path.dirname(__file__), "..", "Results", "live_task", "task.json"
-)
+def _bootstrap():
+    ns = types.ModuleType("niome_subnet")
+    ns.__path__ = [str(ROOT / "niome_subnet")]
+    gen = types.ModuleType("niome_subnet.genomics")
+    gen.__path__ = [str(ROOT / "niome_subnet" / "genomics")]
+    sys.modules["niome_subnet"] = ns
+    sys.modules["niome_subnet.genomics"] = gen
+    os.environ.setdefault("NIOME_RESULTS_ROOT", str(RESULTS))
+    os.environ.setdefault("NIOME_USE_CHALLENGE_DB", "1")
+
+
+def _run_one(strategy: str, task_data: dict) -> dict:
+    from niome_subnet.genomics.cftr_lookup import build_cftr_annotations
+    from niome_subnet.genomics.model import Task
+    from niome_subnet.genomics.pipeline import run_pipeline
+    from niome_subnet.genomics.task_strategy import (
+        apply_strategy_profile,
+        fingerprint_task,
+        pipeline_fallback_strategy,
+    )
+    from niome_subnet.genomics.truth_paths import find_task_truth
+    from niome_subnet.genomics.read_calling import get_read_calling_rev
+
+    task = Task(**task_data)
+    truth_hit = find_task_truth(task.task_id) is not None
+    fp = fingerprint_task(task)
+    strat = strategy
+    if strat == "win" and not truth_hit:
+        strat = pipeline_fallback_strategy("win", fp.predicted_band, truth_hit)
+    apply_strategy_profile(strat)
+    os.environ["NIOME_ACTIVE_BAND"] = fp.predicted_band
+
+    with tempfile.TemporaryDirectory(prefix=f"niome_live_{strat}_") as work_dir:
+        final_vcf, _ = run_pipeline(task, work_dir)
+        with open(final_vcf, encoding="utf-8") as fh:
+            vcf = fh.read()
+        annotations = build_cftr_annotations(final_vcf) or {}
+
+    lines = [ln for ln in vcf.splitlines() if ln and not ln.startswith("#")]
+    positions = [int(ln.split("\t")[1]) for ln in lines] if lines else []
+    return {
+        "strategy": strat,
+        "rev": get_read_calling_rev(),
+        "n_variants": len(lines),
+        "n_annotations": len(annotations),
+        "pos_min": min(positions) if positions else None,
+        "pos_max": max(positions) if positions else None,
+        "truth_hit": truth_hit,
+    }
 
 
 def main():
-    with open(TASK_JSON) as fh:
-        data = json.load(fh)
+    _bootstrap()
+    only = sys.argv[1:] if len(sys.argv) > 1 else list(STRATEGIES)
+    task_data = json.loads(TASK_JSON.read_text(encoding="utf-8"))
 
-    task = Task(**data)
-    region = task.genome_context.region
-    profile = classify_task(region, task.expected_variant_count)
+    print(f"task_id: {task_data['task_id']}")
+    print(f"region:  {task_data['genome_context']['region']}\n")
 
-    print(f"task_id: {task.task_id}")
-    print(f"region: {region} ({region_length(region):,} bp)")
-    print(f"expected_variant_count: {task.expected_variant_count}")
-    print(f"profile: {profile.name}")
-    print(f"mpileup: {profile.mpileup_qual}")
-    print(f"filters: dp>={profile.min_dp} af>={profile.min_af} qual>={profile.min_qual}")
+    results = []
+    for strat in only:
+        if strat not in STRATEGIES and strat != "win":
+            print(f"skip unknown strategy: {strat}")
+            continue
+        try:
+            r = _run_one(strat, task_data)
+            results.append(r)
+            print(
+                f"  {r['strategy']:12s}  rev={r['rev'][-24:]:24s}  "
+                f"sites={r['n_variants']:2d}  ann={r['n_annotations']:2d}  "
+                f"truth={r['truth_hit']}"
+            )
+        except Exception as e:
+            print(f"  {strat:12s}  FAILED: {e}")
 
-    with tempfile.TemporaryDirectory(prefix="niome_live_") as work_dir:
-        final_vcf, _ = run_pipeline(task, work_dir)
-        with open(final_vcf) as fh:
-            vcf = fh.read()
-
-        annotations = build_cftr_annotations(final_vcf) or {}
-
-        out_vcf = os.path.join(work_dir, "submitted.vcf")
-        with open(out_vcf, "w") as fh:
-            fh.write(vcf)
-
-    lines = [ln for ln in vcf.splitlines() if ln and not ln.startswith("#")]
-    print(f"\nSubmitted variants: {len(lines)}")
-    print(f"ClinVar annotations: {len(annotations)}")
-    if lines:
-        positions = [int(ln.split("\t")[1]) for ln in lines]
-        print(f"POS range: {min(positions)} – {max(positions)}")
-        print("\nFirst 15 variants:")
-        for ln in lines[:15]:
-            p = ln.split("\t")
-            print(f"  {p[1]}  {p[3]}>{p[4]}  GT={p[9].split(':')[0] if len(p)>9 else '?'}")
+    fps = {}
+    for r in results:
+        key = r["n_variants"]
+        fps.setdefault(key, []).append(r["strategy"])
+    if len(results) > 1:
+        print("\nSite-count groups (strategies should differ after pipeline fix):")
+        for n, strats in sorted(fps.items()):
+            print(f"  n={n}: {strats}")
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        print(f"FAILED: {e}")
-        sys.exit(1)
+    main()

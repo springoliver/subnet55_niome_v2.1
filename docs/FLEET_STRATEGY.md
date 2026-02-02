@@ -78,6 +78,26 @@ python -m pytest tests/test_task_strategy.py -q
 3. After round: `python tests/analyze_user_miners.py`
 4. Compare your best per band vs `best_native` in `analyze_fleet_strategy.py` output.
 
+### Full challenge database (all Results history)
+
+**Always rebuild after adding a new round folder:**
+
+```bash
+python scripts/build_challenge_db.py
+python scripts/report_challenge_db.py
+python tests/analyze_fleet_strategy.py
+```
+
+See [CHALLENGE_DATABASE.md](CHALLENGE_DATABASE.md). Miners use historical calibration when
+`NIOME_RESULTS_ROOT` points at `Results/` (`NIOME_USE_CHALLENGE_DB=1` default).
+
+### Truth vs top-miner analysis
+
+```bash
+python tests/analyze_truth_vs_top.py
+python tests/analyze_round_fleet_dupes.py 5.23.04 5.24.01
+```
+
 ### PM2 deploy (Vultr)
 
 `pm2 reload` **does not** fix a wrong `cwd`. If error logs mention
