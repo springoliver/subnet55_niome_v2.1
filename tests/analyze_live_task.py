@@ -29,6 +29,7 @@ def _bootstrap():
     sys.modules["niome_subnet"] = ns
     sys.modules["niome_subnet.analysis"] = ana
     sys.modules["niome_subnet.genomics"] = gen
+    os.environ.setdefault("NIOME_RESULTS_ROOT", str(RESULTS))
 
 
 def _load_genomics(name: str):
@@ -88,29 +89,27 @@ def main():
     start, end = map(int, rest.split("-"))
     rlen = end - start
 
-    class _In:
-        read1_fastq = task["input"]["read1_fastq"]
-        read2_fastq = task["input"]["read2_fastq"]
-
-    class _GC:
-        region = region
-
     class _Task:
-        task_id = task["task_id"]
-        genome_context = _GC()
-        input = _In()
-        expected_variant_count = task.get("expected_variant_count", 0)
+        def __init__(self):
+            self.task_id = task["task_id"]
+            self.expected_variant_count = task.get("expected_variant_count", 0)
+            self.genome_context = types.SimpleNamespace(region=region)
+            self.input = types.SimpleNamespace(
+                read1_fastq=task["input"]["read1_fastq"],
+                read2_fastq=task["input"]["read2_fastq"],
+            )
 
-    fp = ts.fingerprint_task(_Task())
+    task_obj = _Task()
+    fp = ts.fingerprint_task(task_obj)
     prof = tp.classify_task(region, 0)
     truth_hit = find_task_truth(task["task_id"]) is not None
 
     strategies = {
-        "auto (springhot)": ts.resolve_strategy(_Task(), truth_available=truth_hit),
+        "auto (springhot)": ts.resolve_strategy(task_obj, truth_available=truth_hit),
         "high_recall": "high_recall",
         "v10": "v10",
         "v5_style": "v5_style",
-        "win (spring05)": ts.resolve_strategy(_Task(), truth_available=truth_hit)
+        "win (spring05)": ts.resolve_strategy(task_obj, truth_available=truth_hit)
         if truth_hit
         else ts.pipeline_fallback_strategy("win", fp.predicted_band, False),
     }
@@ -129,7 +128,7 @@ def main():
     if hist:
         print(
             f"history:      strategy={hist.get('strategy')}  "
-            f"curriculum_target≈{hist.get('curriculum_target_suggested')}  "
+            f"curriculum_target~{hist.get('curriculum_target_suggested')}  "
             f"top_n_median={hist.get('top_site_counts', {}).get('median', '?')}"
         )
 
@@ -146,10 +145,10 @@ def main():
     _compare_recent_tasks(task)
 
     print("\n--- Rules for this task ---")
-    print("  • NEW task_id → new truth positions; do NOT replay 5.23/5.24 VCF panels.")
-    print("  • Same crt/reads FASTQ → same BAM evidence; different loci each round.")
-    print("  • Target ~29–33 sites (ultra); high_recall merges all mpileup passes.")
-    print("  • After round: save miner.json + task.json under Results/5.24.02/")
+    print("  - NEW task_id = new truth positions; do NOT replay 5.23/5.24 VCF panels.")
+    print("  - Same crt/reads FASTQ = same BAM evidence; different loci each round.")
+    print("  - Target ~29-33 sites (ultra); high_recall merges all mpileup passes.")
+    print("  - After round: save miner.json + task.json under Results/5.24.02/")
     print("    then: python scripts/build_challenge_db.py")
 
     plan_path = path.parent / "strategy_plan.json"

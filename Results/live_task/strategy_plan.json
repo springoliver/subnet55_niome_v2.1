@@ -1,0 +1,53 @@
+{
+  "task_id": "f38d9a47-9da4-423b-9215-c32b31ddb7a3",
+  "region": "chr7:117480000-117670000",
+  "read_key": "5571844b9cf0",
+  "band": "ultra",
+  "truth_available": false,
+  "historical": {
+    "strategy": "high_recall",
+    "truth_site_counts": {},
+    "top_site_counts": {
+      "n": 2,
+      "min": 32,
+      "max": 33,
+      "median": 33,
+      "mean": 32.5
+    },
+    "curriculum_target_suggested": 33
+  },
+  "strategies": {
+    "auto (springhot)": "high_recall",
+    "high_recall": "high_recall",
+    "v10": "v10",
+    "v5_style": "v5_style",
+    "win (spring05)": "high_recall"
+  },
+  "fleet_pm2": {
+    "high_recall": [
+      "spring01",
+      "spring02",
+      "spring03",
+      "spring04",
+      "miner-2",
+      "miner-4"
+    ],
+    "v10": [
+      "spring07",
+      "spring09",
+      "miner-1"
+    ],
+    "v5_style": [
+      "spring06",
+      "spring08",
+      "miner-3"
+    ],
+    "win": [
+      "spring05",
+      "miner-5"
+    ],
+    "auto": [
+      "springhot"
+    ]
+  }
+}
