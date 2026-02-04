@@ -257,66 +257,9 @@ def count_calls_in_region(
 
 def _load_clinvar_ids(region: str) -> Dict[Tuple[int, str, str], str]:
     """Map (pos, ref, alt) -> ClinVar variation ID for VCF ID column."""
-    chrom, region_start, region_end = parse_region(region)
-    out: Dict[Tuple[int, str, str], str] = {}
-    try:
-        db = ensure_clinvar_db()
-    except Exception as e:
-        bt.logging.warning(f"[read_calling] ClinVar unavailable: {e}")
-        return out
+    from niome_subnet.genomics.cftr_lookup import load_clinvar_region_map
 
-    for reg in (region, region.replace("chr7", "7")):
-        result = subprocess.run(
-            f"bcftools view -r {reg} {db}",
-            shell=True,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            continue
-        for line in result.stdout.splitlines():
-            if line.startswith("#"):
-                continue
-            parts = line.split("\t")
-            if len(parts) < 5:
-                continue
-            pos = int(parts[1])
-            if not (region_start <= pos <= region_end):
-                continue
-            vid = parts[2].split(";")[0] if parts[2] != "." else "."
-            ref = parts[3]
-            for alt in parts[4].split(","):
-                if _is_callable(ref, alt):
-                    out[(pos, ref, alt)] = vid
-        if out:
-            break
-
-    if not out:
-        pad = _MICRO_PAD
-        padded = f"{chrom}:{max(1, region_start - pad)}-{region_end + pad}"
-        result = subprocess.run(
-            f"bcftools view -r {padded} {db}",
-            shell=True,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode == 0:
-            for line in result.stdout.splitlines():
-                if line.startswith("#"):
-                    continue
-                parts = line.split("\t")
-                if len(parts) < 5:
-                    continue
-                pos = int(parts[1])
-                if not (region_start <= pos <= region_end):
-                    continue
-                vid = parts[2].split(";")[0] if parts[2] != "." else "."
-                ref = parts[3]
-                for alt in parts[4].split(","):
-                    if _is_callable(ref, alt):
-                        out.setdefault((pos, ref, alt), vid)
-
-    return out
+    return {key: hit[0] for key, hit in load_clinvar_region_map(region).items()}
 
 
 def select_read_variants(

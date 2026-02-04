@@ -217,6 +217,56 @@
       },
       "configured_strategy": "auto"
     },
+    "141": {
+      "miner_uid": 141,
+      "validator_uid": 119,
+      "final_score": 0.0,
+      "vcf_score": 0.0,
+      "annotation_score": 0.0,
+      "n_sites": 9,
+      "panel_class": "other",
+      "fingerprint": "7484f23c6f17ac18",
+      "source_rev": null,
+      "vs_truth": {
+        "tp": 0,
+        "fp": 9,
+        "fn": 13,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "count_penalty": 0.6923076923076923,
+        "gt_match": 0,
+        "gt_total": 0,
+        "jaccard": 0.0,
+        "missed_positions": [
+          117493131,
+          117509105,
+          117515560,
+          117527342,
+          117530897,
+          117531103,
+          117534354,
+          117535410,
+          117548802,
+          117559558,
+          117592659,
+          117594976,
+          117658905
+        ],
+        "extra_positions": [
+          117504234,
+          117504239,
+          117504249,
+          117504365,
+          117509075,
+          117509090,
+          117509093,
+          117509106,
+          117509145
+        ]
+      },
+      "configured_strategy": "auto"
+    },
     "209": {
       "miner_uid": 209,
       "validator_uid": 154,

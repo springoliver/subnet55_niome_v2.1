@@ -21,9 +21,9 @@ def _clear_niome_env():
 
 def test_high_recall_pipeline_differs_from_v10():
     _clear_niome_env()
-    apply_strategy_profile("high_recall")
+    apply_strategy_profile("high_recall", predicted_band="high")
     assert pipeline_pick_mode() == "recall"
-    assert pipeline_merge_pool() is True
+    assert pipeline_merge_pool() is False
     assert os.environ.get("NIOME_MPILEUP_QUAL") == "-q 0 -Q 0"
 
     _clear_niome_env()
@@ -52,4 +52,28 @@ def test_read_calling_rev_runtime():
 def test_win_fallback_without_truth():
     _clear_niome_env()
     name = pipeline_fallback_strategy("win", "ultra", False)
-    assert name == "high_recall"
+    assert name == "v5_style"
+
+
+def test_crt_reads_band_is_high_not_ultra():
+    _clear_niome_env()
+    from tests.conftest import load_genomics_module
+
+    ts = load_genomics_module("task_strategy.py")
+    TaskFingerprint = ts.TaskFingerprint
+
+    class _Ctx:
+        region = "chr7:117480000-117670000"
+
+    class _In:
+        read1_fastq = "https://bucket/crt/reads_1.fq"
+        read2_fastq = "https://bucket/crt/reads_2.fq"
+
+    class _Task:
+        genome_context = _Ctx()
+        input = _In()
+
+    fp = ts.fingerprint_task(_Task())
+    assert fp.predicted_band == "high"
+    strat = ts.resolve_strategy(_Task(), miner_uid=141, truth_available=False)
+    assert strat == "v5_style"

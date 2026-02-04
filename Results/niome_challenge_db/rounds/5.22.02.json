@@ -79,6 +79,18 @@
       "source_rev": "niome-native-2026-05-21-v2",
       "configured_strategy": "auto"
     },
+    "141": {
+      "miner_uid": 141,
+      "validator_uid": 58,
+      "final_score": 0.0,
+      "vcf_score": 0.0,
+      "annotation_score": 0.0,
+      "n_sites": 9,
+      "panel_class": "other",
+      "fingerprint": "7484f23c6f17ac18",
+      "source_rev": null,
+      "configured_strategy": "auto"
+    },
     "209": {
       "miner_uid": 209,
       "validator_uid": 58,

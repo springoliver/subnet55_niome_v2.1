@@ -98,8 +98,8 @@ class Miner(BaseMinerNeuron):
                 f"— pipeline fallback={fallback}"
             )
             strategy = fallback
-        apply_strategy_profile(strategy)
-        os.environ["NIOME_ACTIVE_BAND"] = fp.predicted_band
+        apply_strategy_profile(strategy, predicted_band=fp.predicted_band)
+        os.environ["NIOME_TASK_REGION"] = task.genome_context.region
         bt.logging.info(strategy_log_line(task, strategy, fp))
 
         cached = self._cache_get(task, strategy)

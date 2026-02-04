@@ -30,7 +30,7 @@
     "curriculum_target_suggested": 20
   },
   "high": {
-    "strategy": "high_recall",
+    "strategy": "v5_style",
     "truth_site_counts": {
       "n": 1,
       "min": 25,
@@ -39,16 +39,16 @@
       "mean": 25.0
     },
     "top_site_counts": {
-      "n": 5,
+      "n": 6,
       "min": 11,
       "max": 29,
       "median": 29,
-      "mean": 24.4
+      "mean": 24.5
     },
     "curriculum_target_suggested": 25
   },
   "ultra": {
-    "strategy": "high_recall",
+    "strategy": "v5_style",
     "truth_site_counts": {},
     "top_site_counts": {
       "n": 2,

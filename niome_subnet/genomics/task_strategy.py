@@ -17,6 +17,7 @@ Per-UID override: NIOME_UID_STRATEGY_<uid>=v5_style (optional)
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 from dataclasses import dataclass
@@ -28,9 +29,10 @@ COUNT_MID = (15, 22)
 COUNT_HIGH = (23, 29)
 COUNT_ULTRA = (30, 36)
 
-# Read URL path → typical truth-size band (crt/reads reused across tasks).
+# Read URL path → band hint. crt/reads is reused across rounds; winning native
+# panels on 190 kb CFTR are ~25 sites (high band), not 32–33 (ultra).
 _READ_BAND_HINTS: Dict[str, str] = {
-    "crt/reads": "ultra",  # recent 30–33 site rounds
+    "crt/reads": "high",
 }
 
 
@@ -75,7 +77,6 @@ PROFILES: Dict[str, StrategyProfile] = {
         env={
             "NIOME_WIN_MODE": "0",
             "NIOME_VCF_MINIMAL": "0",
-            "NIOME_CURRICULUM_TARGET": "30",
             "NIOME_GT_HOM_AF": "0.58",
             "NIOME_GT_HET_AF": "0.20",
             "NIOME_MPILEUP_QUAL": "-q 2 -Q 2",
@@ -89,7 +90,6 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_WIN_MODE": "0",
             "NIOME_VCF_MINIMAL": "0",
             "NIOME_VCF_DOT_ID": "1",
-            "NIOME_CURRICULUM_TARGET": "24",
             "NIOME_GT_HOM_AF": "0.58",
             "NIOME_GT_HET_AF": "0.20",
             "NIOME_NATIVE_RECALL": "0",
@@ -105,24 +105,23 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_WIN_MODE": "0",
             "NIOME_VCF_MINIMAL": "1",
             "NIOME_VCF_DOT_ID": "1",
-            "NIOME_CURRICULUM_TARGET": "32",
             "NIOME_GT_HOM_AF": "0.58",
             "NIOME_GT_HET_AF": "0.18",
             "NIOME_NATIVE_RECALL": "1",
             "NIOME_MPILEUP_QUAL": "-q 0 -Q 0",
             "NIOME_MPILEUP_EXTRA": "--indels-2.0",
             "NIOME_PIPELINE_PICK": "recall",
-            "NIOME_PIPELINE_MERGE_POOL": "1",
+            "NIOME_PIPELINE_MERGE_POOL": "0",
         },
     ),
 }
 
-# auto: map predicted band → strategy (beat native #1 in that band)
+# auto: map predicted band → strategy (calibrated from Results/ top native miners)
 _BAND_TO_STRATEGY = {
     "low": "v5_style",
     "mid": "v10",
-    "high": "high_recall",
-    "ultra": "high_recall",
+    "high": "v5_style",
+    "ultra": "v5_style",
 }
 
 
@@ -142,11 +141,33 @@ def _read_fingerprint(read1: str, read2: str) -> str:
     return hashlib.md5(raw.encode()).hexdigest()[:12]
 
 
+def _load_strategy_calibration() -> Dict[str, Any]:
+    """Band targets/strategies from Results/niome_challenge_db (optional)."""
+    if os.environ.get("NIOME_USE_CHALLENGE_DB", "1").strip().lower() in (
+        "0",
+        "false",
+        "no",
+    ):
+        return {}
+    try:
+        root = os.environ.get("NIOME_RESULTS_ROOT", "").strip()
+        if not root:
+            return {}
+        path = os.path.join(
+            root, "niome_challenge_db", "training", "strategy_calibration.json"
+        )
+        if not os.path.isfile(path):
+            return {}
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return {}
+
+
 def _predict_band(region_len: int, read1: str) -> str:
     for hint, band in _READ_BAND_HINTS.items():
         if hint in (read1 or ""):
-            if band == "ultra":
-                return "ultra"
+            return band
     # Ultra-wide CFTR default trend (5.22+): high/ultra counts dominate.
     if region_len >= 150_000:
         return os.environ.get("NIOME_DEFAULT_BAND", "high").strip() or "high"
@@ -195,7 +216,8 @@ def resolve_strategy(
         return "win"
 
     fp = fingerprint_task(task)
-    return _BAND_TO_STRATEGY.get(fp.predicted_band, "v10")
+    cal = _load_strategy_calibration().get(fp.predicted_band, {})
+    return cal.get("strategy") or _BAND_TO_STRATEGY.get(fp.predicted_band, "v10")
 
 
 def pipeline_fallback_strategy(
@@ -206,14 +228,34 @@ def pipeline_fallback_strategy(
     """When win is configured but truth is missing, use a native pipeline strategy."""
     if strategy_name != "win" or truth_available:
         return strategy_name
-    return _BAND_TO_STRATEGY.get(predicted_band, "high_recall")
+    cal = _load_strategy_calibration().get(predicted_band, {})
+    return cal.get("strategy") or _BAND_TO_STRATEGY.get(predicted_band, "v5_style")
 
 
-def apply_strategy_profile(strategy_name: str) -> StrategyProfile:
+def _apply_band_curriculum(predicted_band: str) -> None:
+    """Set submit-count goal from challenge DB for this band (overrides stale profile caps)."""
+    cal = _load_strategy_calibration().get(predicted_band, {})
+    target = cal.get("curriculum_target_suggested")
+    if target:
+        os.environ["NIOME_CURRICULUM_TARGET"] = str(int(target))
+        return
+    defaults = {"low": 12, "mid": 20, "high": 25, "ultra": 28}
+    os.environ["NIOME_CURRICULUM_TARGET"] = str(defaults.get(predicted_band, 25))
+
+
+def apply_strategy_profile(
+    strategy_name: str,
+    predicted_band: Optional[str] = None,
+) -> StrategyProfile:
     """Apply profile env vars for this solve (does not clear unrelated env)."""
     profile = PROFILES.get(strategy_name, PROFILES["v10"])
     for key, val in profile.env.items():
         os.environ[key] = val
+    if predicted_band:
+        os.environ["NIOME_ACTIVE_BAND"] = predicted_band
+        _apply_band_curriculum(predicted_band)
+        if strategy_name == "high_recall" and predicted_band in ("high", "low"):
+            os.environ["NIOME_PIPELINE_MERGE_POOL"] = "0"
     os.environ["NIOME_ACTIVE_STRATEGY"] = profile.name
     os.environ["NIOME_ACTIVE_STRATEGY_REV"] = profile.revision_tag
     return profile

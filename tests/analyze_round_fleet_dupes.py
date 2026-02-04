@@ -7,7 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1] / "Results"
-USER_UIDS = {139, 71, 50, 99, 209, 235, 226, 124, 9, 97, 217, 36, 92, 225, 38, 155}
+USER_UIDS = {141, 139, 71, 50, 99, 209, 235, 226, 124, 9, 97, 217, 36, 92, 225, 38, 155}
 VALIDATORS = {119, 154, 58}
 FLEET = {
     50: "spring01/high_recall",
@@ -19,7 +19,8 @@ FLEET = {
     9: "spring07/v10",
     97: "spring08/v5_style",
     217: "spring09/v10",
-    139: "springhot/auto",
+    141: "springhot/auto",
+    139: "springhot/auto (legacy)",
 }
 
 

@@ -128,7 +128,7 @@ module.exports = {
     }),
     minerApp({
       name: "miner-5",
-      hotkey: "miner-pang05",
+      hotkey: "miner-pang03",
       port: 8095,
       strategy: "win",
       extraEnv: {

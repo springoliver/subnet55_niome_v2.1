@@ -79,6 +79,18 @@
       "source_rev": null,
       "configured_strategy": "auto"
     },
+    "141": {
+      "miner_uid": 141,
+      "validator_uid": 154,
+      "final_score": 0.7280631864190927,
+      "vcf_score": 0.7951923071293163,
+      "annotation_score": 0.5714285714285714,
+      "n_sites": 7,
+      "panel_class": "other",
+      "fingerprint": "f64d1e19e56cc291",
+      "source_rev": null,
+      "configured_strategy": "auto"
+    },
     "209": {
       "miner_uid": 209,
       "validator_uid": 119,

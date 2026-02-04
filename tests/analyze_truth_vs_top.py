@@ -26,7 +26,7 @@ def _bootstrap():
     ana_pkg.__path__ = [str(ROOT / "niome_subnet" / "analysis")]
     sys.modules["niome_subnet"] = ns_pkg
     sys.modules["niome_subnet.analysis"] = ana_pkg
-USER_UIDS = {139, 71, 50, 99, 209, 235, 226, 124, 9, 97, 217, 36, 92, 225, 38, 155}
+USER_UIDS = {141, 139, 71, 50, 99, 209, 235, 226, 124, 9, 97, 217, 36, 92, 225, 38, 155}
 
 
 def main():

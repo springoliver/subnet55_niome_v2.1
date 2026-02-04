@@ -41,6 +41,14 @@ def _recall_aggressive() -> bool:
     )
 
 
+def _trim_slack() -> int:
+    """Max sites above curriculum target before evidence trim."""
+    if not _recall_aggressive():
+        return 2
+    band = os.environ.get("NIOME_ACTIVE_BAND", "high").strip() or "high"
+    return {"low": 2, "mid": 3, "high": 1, "ultra": 5}.get(band, 2)
+
+
 def _allele_len(ref: str, alt: str) -> int:
     return max(len(ref), len(alt))
 
@@ -293,8 +301,9 @@ def native_select_variants(
         pool.append(call)
 
     target_n = curriculum_target_for_profile(profile)
+    slack = _trim_slack()
     trim_max = (
-        max(NATIVE_COUNT_TRIM_MAX, target_n + 4)
+        max(NATIVE_COUNT_TRIM_MAX, target_n + slack)
         if target_n > 0
         else NATIVE_COUNT_TRIM_MAX
     )

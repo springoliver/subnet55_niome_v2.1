@@ -26,7 +26,9 @@ Oracle **always** ~0.90–0.99 (truth-shaped panels). Native ceiling ~0.70–0.8
 | Empty VCF (0 score) | 5.23.01: UIDs 9,97,124… | v10 emergency + pipeline retry (all strategies) |
 | GT over-call 1/1 | 5.23.02 v9 vs 71 | **v5_style**: hom AF ≥0.58 |
 | Wrong indel REF/ALT | 5.23.02–03 six POS | **v5_style** + `collapse_indels_at_position` (v10 base) |
-| Under-count vs oracle | ~20 vs 30–33 | **high_recall**: curriculum 32 |
+| Over-count vs native winner | 5.24.02: 27 sites vs top 25 | **v5_style** @ curriculum **25**, not high_recall merge |
+| crt/reads mis-band | auto used ultra → recall | **crt/reads → high band** (not ultra) |
+| Under-count vs oracle | ~20 vs 30–33 (true ultra only) | **high_recall** on dedicated UIDs only |
 | Annotation leak | 71 ann 0.81 vs 0.44, same VCF | **v5_style**: full FORMAT + ClinVar annotate path |
 | Oracle rounds | top 0.94+ | **win**: `NIOME_TRUTH_DIR` / manager truth |
 
@@ -36,9 +38,9 @@ Oracle **always** ~0.90–0.99 (truth-shaped panels). Native ceiling ~0.70–0.8
 |----------|------|-------------|
 | `win` | Truth file for `task_id` | Oracle (~0.90+) |
 | `v5_style` | Low/mid band or UID 71 | Best native on annotation-heavy tasks |
-| `high_recall` | High/ultra band | Best native on 30+ site tasks (UID 65, 62…) |
+| `high_recall` | Dedicated UIDs only | Extra recall arm; capped by band curriculum |
 | `v10` | Default balanced | Mid band native |
-| `auto` | Per task: truth → band map | Picks one of above |
+| `auto` | Per task: truth → band map | **high/ultra crt/reads → v5_style** (5.24.02: top 0.91 @ 25 sites) |
 
 ### Per-UID PM2 example
 
@@ -51,7 +53,7 @@ export NIOME_UID_STRATEGY_209=high_recall
 export NIOME_UID_STRATEGY_235=high_recall
 
 # Truth miner when manager publishes
-export NIOME_UID_STRATEGY_139=win
+export NIOME_UID_STRATEGY_141=auto   # springhot (was 139)
 export NIOME_TRUTH_DIR=/path/to/truth_by_task
 
 # Rest: v10 or auto
@@ -74,7 +76,7 @@ python -m pytest tests/test_task_strategy.py -q
 ## Launch checklist
 
 1. Full fleet on **one code rev** (current `main`) — strategies via env only.
-2. Log line: `[strategy] name=v5_style band=ultra …`
+2. Log line: `[strategy] name=v5_style band=high … pick=precision curriculum_target=25`
 3. After round: `python tests/analyze_user_miners.py`
 4. Compare your best per band vs `best_native` in `analyze_fleet_strategy.py` output.
 

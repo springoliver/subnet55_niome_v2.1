@@ -130,6 +130,16 @@
     "truth_n": 0
   },
   {
+    "round": "5.24.02",
+    "task_id": "f38d9a47",
+    "band": "high",
+    "top_uid": 52,
+    "top_n": 25,
+    "top_class": "native",
+    "top_score": 0.9123154802359772,
+    "truth_n": 0
+  },
+  {
     "round": "old_version_result__5.14.02",
     "task_id": "40f446dd",
     "band": "low",

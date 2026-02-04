@@ -40,7 +40,7 @@ DEFAULT_RESULTS_ROOT = Path(__file__).resolve().parents[2] / "Results"
 DB_DIR_NAME = "niome_challenge_db"
 VALIDATORS = {119, 154, 58}
 DEFAULT_FLEET_UIDS = {
-    139, 71, 50, 99, 209, 235, 226, 124, 9, 97, 217, 36, 92, 225, 38, 155,
+    141, 139, 71, 50, 99, 209, 235, 226, 124, 9, 97, 217, 36, 92, 225, 38, 155,
 }
 FLEET_STRATEGY = {
     50: "high_recall",
@@ -52,7 +52,8 @@ FLEET_STRATEGY = {
     9: "v10",
     97: "v5_style",
     217: "v10",
-    139: "auto",
+    141: "auto",
+    139: "auto",  # legacy UID if still registered on-chain
     71: "v5_style",
 }
 
@@ -283,11 +284,12 @@ def ingest_round(
 
 
 def _strategy_for_band(b: str) -> str:
+    """Match task_strategy._BAND_TO_STRATEGY (native winners, not recall merge)."""
     return {
         "low": "v5_style",
         "mid": "v10",
-        "high": "high_recall",
-        "ultra": "high_recall",
+        "high": "v5_style",
+        "ultra": "v5_style",
     }.get(b, "v10")
 
 

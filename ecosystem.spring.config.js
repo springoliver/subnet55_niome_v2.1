@@ -1,7 +1,7 @@
 /**
  * NIOME spring wallet fleet (Vultr) — use: pm2 start ecosystem.spring.config.js
  *
- *  springhot → 139   spring01 → 50    spring02 → 99
+ *  springhot → 141   spring01 → 50    spring02 → 99
  *  spring03  → 209   spring04 → 235   spring05 → 226
  *  spring06  → 124   spring07 → 9     spring08 → 97
  *  spring09  → 217
@@ -107,7 +107,7 @@ module.exports = {
     minerApp({
       name: "springhot",
       hotkey: "springhot",
-      uid: 139,
+      uid: 141,
       port: 8105,
       strategy: "auto",
       forceValidatorPermit: true,
@@ -124,7 +124,7 @@ module.exports = {
       hotkey: "spring02",
       uid: 99,
       port: 8112,
-      strategy: "high_recall",
+      strategy: "v5_style",
       forceValidatorPermit: true,
     }),
     minerApp({

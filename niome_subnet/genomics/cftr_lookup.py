@@ -12,7 +12,10 @@ filtered to the CFTR region, then cached as a small tabix-indexed VCF.
 import os
 import subprocess
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
+
+ClinvarHit = Tuple[str, str, str]  # variation_id, clnsig_raw, clnhgvs
+VariantKey = Tuple[int, str, str]
 
 import bittensor as bt
 
@@ -216,6 +219,151 @@ def _normalize_clnsig(clnsig: str) -> str:
     return " ".join(clnsig.replace("_", " ").split())
 
 
+def _is_callable(ref: str, alt: str) -> bool:
+    return ref not in (".", "N") and alt not in (".", "N") and ref != alt
+
+
+def _parse_region_bounds(region: str) -> Tuple[str, int, int]:
+    chrom, rest = region.split(":")
+    start, end = rest.split("-")
+    return chrom, int(start), int(end)
+
+
+def load_clinvar_region_map(region: str) -> Dict[VariantKey, ClinvarHit]:
+    """(pos, ref, alt) → ClinVar hit for CFTR window (shared by VCF + annotations)."""
+    chrom, region_start, region_end = _parse_region_bounds(region)
+    out: Dict[VariantKey, ClinvarHit] = {}
+    try:
+        db = ensure_clinvar_db()
+    except Exception as e:
+        bt.logging.warning(f"[cftr_lookup] ClinVar unavailable: {e}")
+        return out
+
+    def _ingest(stdout: str) -> None:
+        for line in stdout.splitlines():
+            if line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            if len(parts) < 8:
+                continue
+            pos = int(parts[1])
+            if not (region_start <= pos <= region_end):
+                continue
+            vid = parts[2].split(";")[0] if parts[2] != "." else "."
+            if vid == ".":
+                continue
+            ref = parts[3]
+            info = _parse_info(parts[7])
+            clnsig = info.get("CLNSIG", "Uncertain_significance")
+            clnhgvs = info.get("CLNHGVS", "")
+            for alt in parts[4].split(","):
+                if _is_callable(ref, alt):
+                    key = (pos, ref.upper(), alt.upper())
+                    out.setdefault(key, (vid, clnsig, clnhgvs))
+
+    for reg in (region, region.replace("chr7", "7")):
+        result = subprocess.run(
+            f"bcftools view -r {reg} {db}",
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            _ingest(result.stdout)
+        if out:
+            break
+
+    if not out:
+        pad = 5000
+        padded = f"{chrom}:{max(1, region_start - pad)}-{region_end + pad}"
+        result = subprocess.run(
+            f"bcftools view -r {padded} {db}",
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0:
+            _ingest(result.stdout)
+    return out
+
+
+def _lookup_clinvar_hit(
+    cmap: Dict[VariantKey, ClinvarHit],
+    pos: int,
+    ref: str,
+    alt: str,
+) -> Optional[ClinvarHit]:
+    ref_u, alt_u = ref.upper(), alt.upper()
+    for r, a in ((ref_u, alt_u), (ref, alt), (ref.lower(), alt.lower())):
+        hit = cmap.get((pos, r, a))
+        if hit:
+            return hit
+    return None
+
+
+def _annotation_entry(
+    chrom: str,
+    pos: str,
+    ref: str,
+    alt: str,
+    hit: ClinvarHit,
+) -> Tuple[str, Dict[str, Any]]:
+    variant_id, clnsig_raw, clnhgvs = hit
+    clnsig = _normalize_clnsig(clnsig_raw.split(",")[0])
+    hgvs = (
+        clnhgvs.split("|")[0].strip()
+        if clnhgvs
+        else _build_genomic_hgvs(chrom, pos, ref, alt)
+    )
+    return variant_id, {
+        "hgvs": hgvs,
+        "clinical_significance": clnsig,
+        "drug_response": _drug_response(variant_id, clnsig_raw),
+    }
+
+
+def _merge_annotations_from_vcf(
+    vcf_path: str,
+    base: Dict[str, Any],
+    region: Optional[str] = None,
+) -> Dict[str, Any]:
+    region = region or os.environ.get("NIOME_TASK_REGION", "").strip() or CFTR_REGION
+    """Fill annotation gaps when bcftools annotate misses normalized alleles."""
+    merged = dict(base)
+    try:
+        cmap = load_clinvar_region_map(region)
+    except Exception as e:
+        bt.logging.warning(f"[cftr_lookup] region map for merge failed: {e}")
+        return merged
+    if not cmap:
+        return merged
+
+    with open(vcf_path, encoding="utf-8", errors="replace") as fh:
+        for line in fh:
+            if line.startswith("#") or not line.strip():
+                continue
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 5:
+                continue
+            chrom, pos_s, _id, ref, alt = parts[0], parts[1], parts[2], parts[3], parts[4]
+            pos = int(pos_s)
+            hit = _lookup_clinvar_hit(cmap, pos, ref, alt.split(",")[0])
+            if not hit:
+                continue
+            variant_id = hit[0]
+            if variant_id in merged:
+                continue
+            vid, entry = _annotation_entry(chrom, pos_s, ref, alt.split(",")[0], hit)
+            merged[vid] = entry
+
+    if len(merged) > len(base):
+        bt.logging.info(
+            f"[cftr_lookup] merged annotations {len(base)} -> {len(merged)} "
+            f"via region map for {vcf_path}"
+        )
+    return merged
+
+
 def _build_genomic_hgvs(chrom: str, pos: str, ref: str, alt: str) -> str:
     chrom = chrom if chrom.startswith("chr") else f"chr{chrom}"
     if len(ref) == 1 and len(alt) == 1:
@@ -287,8 +435,9 @@ def build_cftr_annotations(vcf_path: str) -> Optional[Dict[str, Any]]:
                 "drug_response": _drug_response(variant_id, clnsig_raw),
             }
 
-    if annotations:
+    merged = _merge_annotations_from_vcf(vcf_path, annotations)
+    if merged:
         bt.logging.info(
-            f"[cftr_lookup] annotations={len(annotations)} for {vcf_path}"
+            f"[cftr_lookup] annotations={len(merged)} for {vcf_path}"
         )
-    return annotations if annotations else None
+    return merged if merged else None
