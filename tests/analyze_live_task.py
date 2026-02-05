@@ -124,7 +124,9 @@ def main():
     print(f"read_key:     {fp.read_key}  (crt/reads — presign date may differ)")
     print(f"band:         {fp.predicted_band}")
     print(f"profile:      {prof.name}")
-    print(f"truth_file:   {'yes' if truth_hit else 'NO — win UIDs use high_recall pipeline'}")
+    print(
+        f"truth_file:   {'yes' if truth_hit else 'NO — win UIDs fall back to v5_style pipeline'}"
+    )
     if hist:
         print(
             f"history:      strategy={hist.get('strategy')}  "
@@ -134,22 +136,23 @@ def main():
 
     print("\n--- Per-strategy env (after apply_strategy_profile) ---")
     for label, strat in strategies.items():
-        ts.apply_strategy_profile(strat)
+        ts.apply_strategy_profile(strat, predicted_band=fp.predicted_band)
         pick = ts.pipeline_pick_mode()
         merge = ts.pipeline_merge_pool()
+        rev = os.environ.get("NIOME_ACTIVE_STRATEGY_REV", "?")
         print(
             f"  {label:22s}  pick={pick:10s}  merge_pool={merge}  "
-            f"curriculum={os.environ.get('NIOME_CURRICULUM_TARGET', '?')}"
+            f"curriculum={os.environ.get('NIOME_CURRICULUM_TARGET', '?')}  rev={rev}"
         )
 
     _compare_recent_tasks(task)
 
     print("\n--- Rules for this task ---")
-    print("  - NEW task_id = new truth positions; do NOT replay 5.23/5.24 VCF panels.")
-    print("  - Same crt/reads FASTQ = same BAM evidence; different loci each round.")
-    print("  - Target ~29-33 sites (ultra); high_recall merges all mpileup passes.")
-    print("  - After round: save miner.json + task.json under Results/5.24.02/")
-    print("    then: python scripts/build_challenge_db.py")
+    print("  - NEW task_id = new truth loci; do NOT replay prior round VCF panels.")
+    print("  - Same crt/reads FASTQ key = same read library; presign URL can change.")
+    print(f"  - Band={fp.predicted_band}: target ~{hist.get('curriculum_target_suggested', 25)} sites (5.24.02 top native=25).")
+    print("  - auto/springhot + win (no truth) -> v5_style precision; high_recall UIDs stay recall.")
+    print("  - After round: save Results/<round>/task.json + miner.json; build_challenge_db.py")
 
     plan_path = path.parent / "strategy_plan.json"
     plan = {
@@ -161,10 +164,10 @@ def main():
         "historical": hist,
         "strategies": {k: v for k, v in strategies.items()},
         "fleet_pm2": {
-            "high_recall": ["spring01", "spring02", "spring03", "spring04", "miner-2", "miner-4"],
-            "v10": ["spring07", "spring09", "miner-1"],
-            "v5_style": ["spring06", "spring08", "miner-3"],
-            "win": ["spring05", "miner-5"],
+            "high_recall": ["spring01", "spring03"],
+            "v10": ["spring07", "spring09"],
+            "v5_style": ["spring02", "spring06", "spring08"],
+            "win": ["spring04", "spring05"],
             "auto": ["springhot"],
         },
     }
