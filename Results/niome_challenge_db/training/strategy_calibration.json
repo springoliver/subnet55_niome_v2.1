@@ -39,11 +39,11 @@
       "mean": 25.0
     },
     "top_site_counts": {
-      "n": 6,
+      "n": 7,
       "min": 11,
       "max": 29,
-      "median": 29,
-      "mean": 24.5
+      "median": 25,
+      "mean": 24.57
     },
     "curriculum_target_suggested": 25
   },

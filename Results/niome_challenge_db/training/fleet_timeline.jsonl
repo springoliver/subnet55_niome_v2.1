@@ -236,6 +236,23 @@
 {"round": "5.24.02", "task_id": "f38d9a47", "band": "high", "uid": 235, "strategy": "high_recall", "score": 0.7129292450273106, "n_sites": 27, "fingerprint": "14b10b49831bc958", "has_truth": false}
 {"round": "5.24.02", "task_id": "f38d9a47", "band": "high", "uid": 50, "strategy": "high_recall", "score": 0.7129292450273106, "n_sites": 27, "fingerprint": "14b10b49831bc958", "has_truth": false}
 {"round": "5.24.02", "task_id": "f38d9a47", "band": "high", "uid": 124, "strategy": "v5_style", "score": 0.5730045314082934, "n_sites": 25, "fingerprint": "c2b6d30ada311ff5", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 71, "strategy": "v5_style", "score": 0.0, "n_sites": 26, "fingerprint": "c92dbd8459b2b89f", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 9, "strategy": "v10", "score": 0.6100087227932212, "n_sites": 21, "fingerprint": "e4965a2a4db03f0e", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 139, "strategy": "auto", "score": 0.6232676031888644, "n_sites": 20, "fingerprint": "ae7881eb396ea6c3", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 141, "strategy": "auto", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 209, "strategy": "high_recall", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 217, "strategy": "v10", "score": 0.6100087227932212, "n_sites": 21, "fingerprint": "e4965a2a4db03f0e", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 155, "strategy": "?", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 92, "strategy": "?", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 97, "strategy": "v5_style", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 225, "strategy": "?", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 99, "strategy": "high_recall", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 36, "strategy": "?", "score": 0.6100087227932212, "n_sites": 21, "fingerprint": "e4965a2a4db03f0e", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 226, "strategy": "win", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 38, "strategy": "?", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 235, "strategy": "high_recall", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 50, "strategy": "high_recall", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
+{"round": "5.24.03", "task_id": "568327fb", "band": "high", "uid": 124, "strategy": "v5_style", "score": 0.7600087227932211, "n_sites": 21, "fingerprint": "f1930d8bc49a7e64", "has_truth": false}
 {"round": "old_version_result__5.14.02", "task_id": "40f446dd", "band": "low", "uid": 71, "strategy": "v5_style", "score": 0.699999999471111, "n_sites": 6, "fingerprint": "d299e3cb2a286613", "has_truth": true, "jaccard_truth": 1.0}
 {"round": "old_version_result__5.14.02", "task_id": "40f446dd", "band": "low", "uid": 139, "strategy": "auto", "score": 0.11666666646185182, "n_sites": 6, "fingerprint": "7d56fa998b221d53", "has_truth": true, "jaccard_truth": 0.09090909090909091}
 {"round": "old_version_result__5.14.02", "task_id": "40f446dd", "band": "low", "uid": 141, "strategy": "auto", "score": 0.0, "n_sites": 6, "fingerprint": "2e5490f6bf664485", "has_truth": true, "jaccard_truth": 0.0}

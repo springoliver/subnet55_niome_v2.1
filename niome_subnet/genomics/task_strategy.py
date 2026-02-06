@@ -1,17 +1,18 @@
 """
-Fleet strategy router — pick calling profile per task or per-miner config.
+Fleet strategy router — each strategy is a *calling method*, not a target site count.
 
-Goal: beat the best *native* miner in each task family, not one binary for all UIDs.
+Truth site count varies every task (often 22–25 on crt/reads, sometimes 29–33).
+Strategies must NOT hard-code N variants from the last round.
+
+What differs per strategy (see STRATEGY_AXES):
+  - mpileup strictness, pipeline pick (precision/recall/default), merge pool
+  - read-evidence gates (NIOME_NATIVE_RECALL), GT thresholds, VCF shape
+
+NIOME_CURRICULUM_TARGET is forced to 0 at runtime — submit read-backed variants only.
 
 Strategies (NIOME_STRATEGY):
-  auto          — truth win if available, else predict band from read fingerprint
-  win           — NIOME_WIN_MODE + truth paths only
-  v10           — default native v10 (balanced)
-  v5_style      — conservative GT + simpler indels + ~22 count (UID 71 pattern)
-  high_recall   — push toward 30–32 sites (v9-style recall on v10 base)
-  fixed:<name>  — always use profile (for PM2 per-UID assignment)
-
-Per-UID override: NIOME_UID_STRATEGY_<uid>=v5_style (optional)
+  auto, win, v10, v5_style, high_recall, fixed:<name>
+Per-UID override: NIOME_UID_STRATEGY_<uid>=v5_style
 """
 
 from __future__ import annotations
@@ -103,7 +104,7 @@ PROFILES: Dict[str, StrategyProfile] = {
         revision_tag="fleet-recall",
         env={
             "NIOME_WIN_MODE": "0",
-            "NIOME_VCF_MINIMAL": "1",
+            "NIOME_VCF_MINIMAL": "0",
             "NIOME_VCF_DOT_ID": "1",
             "NIOME_GT_HOM_AF": "0.58",
             "NIOME_GT_HET_AF": "0.18",
@@ -111,9 +112,37 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_MPILEUP_QUAL": "-q 0 -Q 0",
             "NIOME_MPILEUP_EXTRA": "--indels-2.0",
             "NIOME_PIPELINE_PICK": "recall",
-            "NIOME_PIPELINE_MERGE_POOL": "0",
+            "NIOME_PIPELINE_MERGE_POOL": "1",
         },
     ),
+}
+
+# What each strategy optimizes (not a variant count).
+STRATEGY_AXES: Dict[str, Dict[str, str]] = {
+    "v5_style": {
+        "goal": "precision_gt",
+        "pipeline_pick": "precision",
+        "merge_pool": "0",
+        "native_recall": "0",
+    },
+    "v10": {
+        "goal": "balanced",
+        "pipeline_pick": "default",
+        "merge_pool": "0",
+        "native_recall": "0",
+    },
+    "high_recall": {
+        "goal": "maximize_read_evidence",
+        "pipeline_pick": "recall",
+        "merge_pool": "1",
+        "native_recall": "1",
+    },
+    "win": {
+        "goal": "truth_when_available",
+        "pipeline_pick": "precision",
+        "merge_pool": "0",
+        "native_recall": "0",
+    },
 }
 
 # auto: map predicted band → strategy (calibrated from Results/ top native miners)
@@ -232,17 +261,6 @@ def pipeline_fallback_strategy(
     return cal.get("strategy") or _BAND_TO_STRATEGY.get(predicted_band, "v5_style")
 
 
-def _apply_band_curriculum(predicted_band: str) -> None:
-    """Set submit-count goal from challenge DB for this band (overrides stale profile caps)."""
-    cal = _load_strategy_calibration().get(predicted_band, {})
-    target = cal.get("curriculum_target_suggested")
-    if target:
-        os.environ["NIOME_CURRICULUM_TARGET"] = str(int(target))
-        return
-    defaults = {"low": 12, "mid": 20, "high": 25, "ultra": 28}
-    os.environ["NIOME_CURRICULUM_TARGET"] = str(defaults.get(predicted_band, 25))
-
-
 def apply_strategy_profile(
     strategy_name: str,
     predicted_band: Optional[str] = None,
@@ -253,9 +271,8 @@ def apply_strategy_profile(
         os.environ[key] = val
     if predicted_band:
         os.environ["NIOME_ACTIVE_BAND"] = predicted_band
-        _apply_band_curriculum(predicted_band)
-        if strategy_name == "high_recall" and predicted_band in ("high", "low"):
-            os.environ["NIOME_PIPELINE_MERGE_POOL"] = "0"
+    # Never force a historical site-count target onto a new task.
+    os.environ["NIOME_CURRICULUM_TARGET"] = "0"
     os.environ["NIOME_ACTIVE_STRATEGY"] = profile.name
     os.environ["NIOME_ACTIVE_STRATEGY_REV"] = profile.revision_tag
     return profile
@@ -281,5 +298,8 @@ def pipeline_merge_pool() -> bool:
 def strategy_log_line(task: Any, strategy_name: str, fp: TaskFingerprint) -> str:
     return (
         f"[strategy] name={strategy_name} band={fp.predicted_band} "
-        f"rlen={fp.region_len} read_key={fp.read_key} region={fp.region}"
+        f"rlen={fp.region_len} read_key={fp.read_key} "
+        f"pick={pipeline_pick_mode()} merge_pool={pipeline_merge_pool()} "
+        f"recall={os.environ.get('NIOME_NATIVE_RECALL', '0')} "
+        f"curriculum=read_only region={fp.region}"
     )

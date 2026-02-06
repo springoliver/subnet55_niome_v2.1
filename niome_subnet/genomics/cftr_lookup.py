@@ -68,11 +68,14 @@ _CLNSIG_TO_RESPONSE: Dict[str, Dict[str, str]] = {
 }
 
 
-def _drug_response(clinvar_id: str, clnsig: str) -> Dict[str, str]:
+def _drug_response(clinvar_id: str, clnsig_raw: str) -> Dict[str, str]:
     if clinvar_id in _PER_VARIANT_DRUG_RESPONSE:
         return _PER_VARIANT_DRUG_RESPONSE[clinvar_id]
-    category = clnsig.split("/")[0].replace(" ", "_")
-    return _CLNSIG_TO_RESPONSE.get(category, {d: "non_responsive" for d in _DRUGS})
+    primary = clnsig_raw.split(",")[0].split("|")[0].strip()
+    category = primary.replace(" ", "_")
+    return _CLNSIG_TO_RESPONSE.get(
+        category, {d: "non_responsive" for d in _DRUGS}
+    )
 
 
 def _run(cmd: str, desc: str = "") -> None:
@@ -216,7 +219,21 @@ def _normalize_clnsig(clnsig: str) -> str:
     """Match validator cftr2 style (spaces, not underscores)."""
     if not clnsig:
         return "Uncertain significance"
-    return " ".join(clnsig.replace("_", " ").split())
+    primary = clnsig.split(",")[0].split("|")[0].strip()
+    return " ".join(primary.replace("_", " ").split())
+
+
+def _pick_genomic_hgvs(
+    clnhgvs: str, chrom: str, pos: str, ref: str, alt: str
+) -> str:
+    """Prefer NC_000007.14:g. form from ClinVar (matches manager cftr2_annotations)."""
+    ref_u, alt_u = ref.upper(), alt.upper()
+    if clnhgvs:
+        for part in clnhgvs.split("|"):
+            part = part.strip()
+            if part.startswith("NC_000007.14:g."):
+                return part
+    return _build_genomic_hgvs(chrom, pos, ref_u, alt_u)
 
 
 def _is_callable(ref: str, alt: str) -> bool:
@@ -309,12 +326,9 @@ def _annotation_entry(
     hit: ClinvarHit,
 ) -> Tuple[str, Dict[str, Any]]:
     variant_id, clnsig_raw, clnhgvs = hit
-    clnsig = _normalize_clnsig(clnsig_raw.split(",")[0])
-    hgvs = (
-        clnhgvs.split("|")[0].strip()
-        if clnhgvs
-        else _build_genomic_hgvs(chrom, pos, ref, alt)
-    )
+    ref_u, alt_u = ref.upper(), alt.upper()
+    clnsig = _normalize_clnsig(clnsig_raw)
+    hgvs = _pick_genomic_hgvs(clnhgvs, chrom, pos, ref_u, alt_u)
     return variant_id, {
         "hgvs": hgvs,
         "clinical_significance": clnsig,
@@ -420,14 +434,11 @@ def build_cftr_annotations(vcf_path: str) -> Optional[Dict[str, Any]]:
                 continue
 
             clnsig_raw = info.get("CLNSIG", "Uncertain_significance")
-            clnsig = _normalize_clnsig(clnsig_raw.split(",")[0])
+            clnsig = _normalize_clnsig(clnsig_raw)
             clnhgvs = info.get("CLNHGVS", "")
             variant_id = vcf_id.split(";")[0]
-            hgvs = (
-                clnhgvs.split("|")[0].strip()
-                if clnhgvs
-                else _build_genomic_hgvs(chrom, pos, ref, alt)
-            )
+            ref_u, alt_u = ref.upper(), alt.upper()
+            hgvs = _pick_genomic_hgvs(clnhgvs, chrom, pos, ref_u, alt_u)
 
             annotations[variant_id] = {
                 "hgvs": hgvs,

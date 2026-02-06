@@ -40,6 +40,13 @@ def fp(rows):
     return hashlib.md5(key.encode()).hexdigest()[:12]
 
 
+def source_rev(log: str) -> str:
+    for line in log.splitlines():
+        if line.startswith("##source="):
+            return line.split("=", 1)[1].strip()
+    return "?"
+
+
 def analyze_round(rd: str):
     tj = json.loads((ROOT / rd / "task.json").read_text(encoding="utf-8"))
     tid = tj["task_id"]
@@ -90,9 +97,17 @@ def analyze_round(rd: str):
         f = recs[0]["fp"]
         strat = FLEET.get(uid, "?")
         user_entries.append((uid, sc, n, f, strat))
+        rev = source_rev(
+            next(
+                x.get("log", "")
+                for x in pool
+                if x.get("miner_uid") == uid
+            )
+        )
         print(
             f"    UID {uid:3d}  {strat:22s}  score={sc:.4f}  "
-            f"sites={n:2d}  fp={f}  (n_validators={len(recs)})"
+            f"sites={n:2d}  fp={f}  rev={rev[-24:] if len(rev) > 24 else rev}  "
+            f"(n_validators={len(recs)})"
         )
 
     fp_groups = defaultdict(list)

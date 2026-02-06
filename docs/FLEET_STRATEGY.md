@@ -26,21 +26,26 @@ Oracle **always** ~0.90–0.99 (truth-shaped panels). Native ceiling ~0.70–0.8
 | Empty VCF (0 score) | 5.23.01: UIDs 9,97,124… | v10 emergency + pipeline retry (all strategies) |
 | GT over-call 1/1 | 5.23.02 v9 vs 71 | **v5_style**: hom AF ≥0.58 |
 | Wrong indel REF/ALT | 5.23.02–03 six POS | **v5_style** + `collapse_indels_at_position` (v10 base) |
-| Over-count vs native winner | 5.24.02: 27 sites vs top 25 | **v5_style** @ curriculum **25**, not high_recall merge |
-| crt/reads mis-band | auto used ultra → recall | **crt/reads → high band** (not ultra) |
-| Under-count vs oracle | ~20 vs 30–33 (true ultra only) | **high_recall** on dedicated UIDs only |
+| Wrong fixed site count | Forcing 29 or 22 from last round | **NIOME_CURRICULUM_TARGET=0** — count from reads each task |
+| Same score, many UIDs | Identical POS/REF/ALT/GT panel | Strategies differ by **method** (pick/recall/merge), not target N |
+| crt/reads mis-band | auto used ultra → recall | **crt/reads → high band** (method choice, not site N) |
 | Annotation leak | 71 ann 0.81 vs 0.44, same VCF | **v5_style**: full FORMAT + ClinVar annotate path |
 | Oracle rounds | top 0.94+ | **win**: `NIOME_TRUTH_DIR` / manager truth |
 
-## Strategy profiles (`NIOME_STRATEGY`)
+## Strategy profiles (`NIOME_STRATEGY`) — method axes, not site counts
 
-| Strategy | When | Beat target |
-|----------|------|-------------|
-| `win` | Truth file for `task_id` | Oracle (~0.90+) |
-| `v5_style` | Low/mid band or UID 71 | Best native on annotation-heavy tasks |
-| `high_recall` | Dedicated UIDs only | Extra recall arm; capped by band curriculum |
-| `v10` | Default balanced | Mid band native |
-| `auto` | Per task: truth → band map | **high/ultra crt/reads → v5_style** (5.24.02: top 0.91 @ 25 sites) |
+Truth **N varies every task** (e.g. 5.24.03 top native **22**, 5.24.02 **25**, some rounds **29–33**).
+Never set fleet-wide “submit 29 variants” from one historical round.
+
+| Strategy | Pipeline | Read selection | Role |
+|----------|----------|----------------|------|
+| `v5_style` | precision pick | strict gates, no recall fill | Best GT / fewer FPs |
+| `v10` | default pick | balanced | Mid-band explorer |
+| `high_recall` | recall + merge pool | relaxed gates | Find borderline read sites |
+| `win` | truth VCF when file exists | oracle | Score when manager publishes truth |
+| `auto` | band → v5_style on crt/reads | same as v5 | springhot default |
+
+Analyze historical splits: `python tests/analyze_strategy_outcomes.py`
 
 ### Per-UID PM2 example
 
