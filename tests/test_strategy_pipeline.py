@@ -63,6 +63,15 @@ def test_read_calling_rev_runtime():
     assert get_read_calling_rev().endswith("+fleet-v10")
 
 
+def test_strategy_profile_clears_previous_env():
+    _clear_niome_env()
+    os.environ["NIOME_MPILEUP_EXTRA"] = "--indels-2.0"
+    os.environ["NIOME_NATIVE_RECALL"] = "1"
+    apply_strategy_profile("v10")
+    assert "NIOME_MPILEUP_EXTRA" not in os.environ
+    assert os.environ.get("NIOME_NATIVE_RECALL") == "0"
+
+
 def test_win_fallback_without_truth():
     _clear_niome_env()
     name = pipeline_fallback_strategy("win", "ultra", False)

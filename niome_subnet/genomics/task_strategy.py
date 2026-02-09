@@ -145,6 +145,23 @@ STRATEGY_AXES: Dict[str, Dict[str, str]] = {
     },
 }
 
+STRATEGY_ENV_KEYS = {
+    "NIOME_WIN_MODE",
+    "NIOME_VCF_MINIMAL",
+    "NIOME_VCF_DOT_ID",
+    "NIOME_GT_HOM_AF",
+    "NIOME_GT_HET_AF",
+    "NIOME_NATIVE_RECALL",
+    "NIOME_MPILEUP_QUAL",
+    "NIOME_MPILEUP_EXTRA",
+    "NIOME_PIPELINE_PICK",
+    "NIOME_PIPELINE_MERGE_POOL",
+    "NIOME_ACTIVE_BAND",
+    "NIOME_ACTIVE_STRATEGY",
+    "NIOME_ACTIVE_STRATEGY_REV",
+    "NIOME_CURRICULUM_TARGET",
+}
+
 # auto: map predicted band → strategy (calibrated from Results/ top native miners)
 _BAND_TO_STRATEGY = {
     "low": "v5_style",
@@ -265,8 +282,10 @@ def apply_strategy_profile(
     strategy_name: str,
     predicted_band: Optional[str] = None,
 ) -> StrategyProfile:
-    """Apply profile env vars for this solve (does not clear unrelated env)."""
+    """Apply profile env vars for this solve, clearing stale strategy env first."""
     profile = PROFILES.get(strategy_name, PROFILES["v10"])
+    for key in STRATEGY_ENV_KEYS:
+        os.environ.pop(key, None)
     for key, val in profile.env.items():
         os.environ[key] = val
     if predicted_band:
