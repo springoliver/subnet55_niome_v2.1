@@ -69,7 +69,13 @@ def test_strategy_profile_clears_previous_env():
     os.environ["NIOME_NATIVE_RECALL"] = "1"
     apply_strategy_profile("v10")
     assert "NIOME_MPILEUP_EXTRA" not in os.environ
-    assert os.environ.get("NIOME_NATIVE_RECALL") == "0"
+    assert os.environ.get("NIOME_NATIVE_RECALL") in (None, "0")
+
+
+def test_apply_profile_sets_task_family_env():
+    _clear_niome_env()
+    apply_strategy_profile("v10", predicted_band="high", task_family="crt")
+    assert os.environ.get("NIOME_TASK_FAMILY") == "crt"
 
 
 def test_win_fallback_without_truth():

@@ -23,6 +23,7 @@ def test_fingerprint_ultra_band():
     fp = fingerprint_task(_Task())
     assert fp.region_len == 190_000
     assert fp.predicted_band in ("high", "ultra")
+    assert fp.task_family == "crt"
 
 
 def test_resolve_auto_with_truth():

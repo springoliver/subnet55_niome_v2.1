@@ -91,14 +91,18 @@ class Miner(BaseMinerNeuron):
         strategy = resolve_strategy(task, miner_uid=uid, truth_available=truth_hit)
         if strategy == "win" and not truth_hit:
             fallback = pipeline_fallback_strategy(
-                strategy, fp.predicted_band, truth_hit
+                strategy, fp.predicted_band, truth_hit, fp.task_family
             )
             bt.logging.warning(
                 f"[strategy] win configured but no truth for {task.task_id[:8]}… "
                 f"— pipeline fallback={fallback}"
             )
             strategy = fallback
-        apply_strategy_profile(strategy, predicted_band=fp.predicted_band)
+        apply_strategy_profile(
+            strategy,
+            predicted_band=fp.predicted_band,
+            task_family=fp.task_family,
+        )
         os.environ["NIOME_TASK_REGION"] = task.genome_context.region
         bt.logging.info(strategy_log_line(task, strategy, fp))
 

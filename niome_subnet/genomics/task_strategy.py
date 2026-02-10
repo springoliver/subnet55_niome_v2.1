@@ -36,6 +36,13 @@ _READ_BAND_HINTS: Dict[str, str] = {
     "crt/reads": "high",
 }
 
+# Task family is a lightweight, stable feature derived from FASTQ URL paths.
+# It is used for future-oriented strategy routing without hard-coding counts.
+_TASK_FAMILY_HINTS: Dict[str, str] = {
+    "crt/reads": "crt",
+    "current_task/reads": "current_task",
+}
+
 
 @dataclass(frozen=True)
 class TaskFingerprint:
@@ -43,6 +50,7 @@ class TaskFingerprint:
     region_len: int
     read_key: str
     predicted_band: str  # low | mid | high | ultra
+    task_family: str
 
 
 @dataclass(frozen=True)
@@ -157,6 +165,7 @@ STRATEGY_ENV_KEYS = {
     "NIOME_PIPELINE_PICK",
     "NIOME_PIPELINE_MERGE_POOL",
     "NIOME_ACTIVE_BAND",
+    "NIOME_TASK_FAMILY",
     "NIOME_ACTIVE_STRATEGY",
     "NIOME_ACTIVE_STRATEGY_REV",
     "NIOME_CURRICULUM_TARGET",
@@ -222,6 +231,13 @@ def _predict_band(region_len: int, read1: str) -> str:
     return "low"
 
 
+def _predict_task_family(read1: str, read2: str) -> str:
+    for hint, family in _TASK_FAMILY_HINTS.items():
+        if hint in (read1 or "") or hint in (read2 or ""):
+            return family
+    return "generic"
+
+
 def fingerprint_task(task: Any) -> TaskFingerprint:
     region = task.genome_context.region
     rlen = _region_length(region)
@@ -229,7 +245,14 @@ def fingerprint_task(task: Any) -> TaskFingerprint:
     r2 = getattr(task.input, "read2_fastq", "") or ""
     rk = _read_fingerprint(r1, r2)
     band = _predict_band(rlen, r1)
-    return TaskFingerprint(region=region, region_len=rlen, read_key=rk, predicted_band=band)
+    family = _predict_task_family(r1, r2)
+    return TaskFingerprint(
+        region=region,
+        region_len=rlen,
+        read_key=rk,
+        predicted_band=band,
+        task_family=family,
+    )
 
 
 def configured_strategy(miner_uid: Optional[int] = None) -> str:
@@ -239,6 +262,17 @@ def configured_strategy(miner_uid: Optional[int] = None) -> str:
         if uid_val:
             return uid_val
     return os.environ.get("NIOME_STRATEGY", "auto").strip().lower() or "auto"
+
+
+def _strategy_calibration_entry(
+    predicted_band: str, task_family: Optional[str] = None
+) -> Dict[str, Any]:
+    cal = _load_strategy_calibration()
+    if task_family:
+        family_entry = cal.get(f"family:{task_family}")
+        if isinstance(family_entry, dict) and family_entry.get("strategy"):
+            return family_entry
+    return cal.get(predicted_band, {})
 
 
 def resolve_strategy(
@@ -262,7 +296,7 @@ def resolve_strategy(
         return "win"
 
     fp = fingerprint_task(task)
-    cal = _load_strategy_calibration().get(fp.predicted_band, {})
+    cal = _strategy_calibration_entry(fp.predicted_band, fp.task_family)
     return cal.get("strategy") or _BAND_TO_STRATEGY.get(fp.predicted_band, "v10")
 
 
@@ -270,17 +304,19 @@ def pipeline_fallback_strategy(
     strategy_name: str,
     predicted_band: str,
     truth_available: bool,
+    task_family: Optional[str] = None,
 ) -> str:
     """When win is configured but truth is missing, use a native pipeline strategy."""
     if strategy_name != "win" or truth_available:
         return strategy_name
-    cal = _load_strategy_calibration().get(predicted_band, {})
+    cal = _strategy_calibration_entry(predicted_band, task_family)
     return cal.get("strategy") or _BAND_TO_STRATEGY.get(predicted_band, "v5_style")
 
 
 def apply_strategy_profile(
     strategy_name: str,
     predicted_band: Optional[str] = None,
+    task_family: Optional[str] = None,
 ) -> StrategyProfile:
     """Apply profile env vars for this solve, clearing stale strategy env first."""
     profile = PROFILES.get(strategy_name, PROFILES["v10"])
@@ -290,6 +326,8 @@ def apply_strategy_profile(
         os.environ[key] = val
     if predicted_band:
         os.environ["NIOME_ACTIVE_BAND"] = predicted_band
+    if task_family:
+        os.environ["NIOME_TASK_FAMILY"] = task_family
     # Never force a historical site-count target onto a new task.
     os.environ["NIOME_CURRICULUM_TARGET"] = "0"
     os.environ["NIOME_ACTIVE_STRATEGY"] = profile.name
@@ -317,7 +355,7 @@ def pipeline_merge_pool() -> bool:
 def strategy_log_line(task: Any, strategy_name: str, fp: TaskFingerprint) -> str:
     return (
         f"[strategy] name={strategy_name} band={fp.predicted_band} "
-        f"rlen={fp.region_len} read_key={fp.read_key} "
+        f"family={fp.task_family} rlen={fp.region_len} read_key={fp.read_key} "
         f"pick={pipeline_pick_mode()} merge_pool={pipeline_merge_pool()} "
         f"recall={os.environ.get('NIOME_NATIVE_RECALL', '0')} "
         f"curriculum=read_only region={fp.region}"
