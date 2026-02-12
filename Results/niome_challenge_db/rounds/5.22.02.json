@@ -1,0 +1,289 @@
+{
+  "round_key": "5.22.02",
+  "round_path": "5.22.02",
+  "task_id": "ddc5b57a-7260-4c00-b521-5d6c20d1e7af",
+  "region": "chr7:117480000-117670000",
+  "region_len": 190000,
+  "read_key": "5571844b9cf0",
+  "band": "mid",
+  "has_truth": false,
+  "truth_path": null,
+  "truth_n": 0,
+  "top_miner": {
+    "miner_uid": 4,
+    "validator_uid": 58,
+    "final_score": 0.9999999997641094,
+    "vcf_score": 0.9999999996630136,
+    "annotation_score": 1.0,
+    "n_sites": 22,
+    "panel_class": "other",
+    "fingerprint": "7dff979d4ad4cdee",
+    "source_rev": null
+  },
+  "oracle_best": {
+    "miner_uid": 60,
+    "validator_uid": 58,
+    "final_score": 0.8947016047690004,
+    "vcf_score": 0.849573721098572,
+    "annotation_score": 1.0,
+    "n_sites": 23,
+    "panel_class": "oracle",
+    "fingerprint": "85d6d1a6b8e8d8fd",
+    "source_rev": null
+  },
+  "native_best": {
+    "miner_uid": 39,
+    "validator_uid": 58,
+    "final_score": 0.8390052093209626,
+    "vcf_score": 0.7700074418870894,
+    "annotation_score": 1.0,
+    "n_sites": 23,
+    "panel_class": "native",
+    "fingerprint": "414c28a13a9aff3a",
+    "source_rev": null
+  },
+  "fleet": {
+    "71": {
+      "miner_uid": 71,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v3",
+      "configured_strategy": "v5_style"
+    },
+    "9": {
+      "miner_uid": 9,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v1",
+      "configured_strategy": "v10"
+    },
+    "139": {
+      "miner_uid": 139,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v2",
+      "configured_strategy": "auto"
+    },
+    "141": {
+      "miner_uid": 141,
+      "validator_uid": 58,
+      "final_score": 0.0,
+      "vcf_score": 0.0,
+      "annotation_score": 0.0,
+      "n_sites": 9,
+      "panel_class": "other",
+      "fingerprint": "7484f23c6f17ac18",
+      "source_rev": null,
+      "configured_strategy": "auto"
+    },
+    "209": {
+      "miner_uid": 209,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v3",
+      "configured_strategy": "high_recall"
+    },
+    "217": {
+      "miner_uid": 217,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v1",
+      "configured_strategy": "v10"
+    },
+    "155": {
+      "miner_uid": 155,
+      "validator_uid": 58,
+      "final_score": 0.5198227468723381,
+      "vcf_score": 0.5045086860081021,
+      "annotation_score": 0.5555555555555556,
+      "n_sites": 18,
+      "panel_class": "native",
+      "fingerprint": "7126ebfcaaeee088",
+      "source_rev": "2026-05-21-v3-ultra4",
+      "configured_strategy": "?"
+    },
+    "92": {
+      "miner_uid": 92,
+      "validator_uid": 58,
+      "final_score": 0.32998866850173375,
+      "vcf_score": 0.3285552407167625,
+      "annotation_score": 0.3333333333333333,
+      "n_sites": 14,
+      "panel_class": "native",
+      "fingerprint": "a2c0c8bffb6846f4",
+      "source_rev": "2026-05-21-v3-ultra3",
+      "configured_strategy": "?"
+    },
+    "97": {
+      "miner_uid": 97,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v1",
+      "configured_strategy": "v5_style"
+    },
+    "225": {
+      "miner_uid": 225,
+      "validator_uid": 58,
+      "final_score": 0.32998866850173375,
+      "vcf_score": 0.3285552407167625,
+      "annotation_score": 0.3333333333333333,
+      "n_sites": 14,
+      "panel_class": "native",
+      "fingerprint": "a2c0c8bffb6846f4",
+      "source_rev": "2026-05-21-v3-ultra3",
+      "configured_strategy": "?"
+    },
+    "99": {
+      "miner_uid": 99,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v2",
+      "configured_strategy": "high_recall"
+    },
+    "36": {
+      "miner_uid": 36,
+      "validator_uid": 58,
+      "final_score": 0.32998866850173375,
+      "vcf_score": 0.3285552407167625,
+      "annotation_score": 0.3333333333333333,
+      "n_sites": 14,
+      "panel_class": "native",
+      "fingerprint": "a2c0c8bffb6846f4",
+      "source_rev": "2026-05-21-v3-ultra3",
+      "configured_strategy": "?"
+    },
+    "226": {
+      "miner_uid": 226,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v1",
+      "configured_strategy": "win"
+    },
+    "38": {
+      "miner_uid": 38,
+      "validator_uid": 58,
+      "final_score": 0.5198227468723381,
+      "vcf_score": 0.5045086860081021,
+      "annotation_score": 0.5555555555555556,
+      "n_sites": 18,
+      "panel_class": "native",
+      "fingerprint": "7126ebfcaaeee088",
+      "source_rev": "2026-05-21-v3-ultra4",
+      "configured_strategy": "?"
+    },
+    "235": {
+      "miner_uid": 235,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v3",
+      "configured_strategy": "high_recall"
+    },
+    "50": {
+      "miner_uid": 50,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v2",
+      "configured_strategy": "high_recall"
+    },
+    "124": {
+      "miner_uid": 124,
+      "validator_uid": 58,
+      "final_score": 0.5911959817982223,
+      "vcf_score": 0.5588514025688891,
+      "annotation_score": 0.6666666666666666,
+      "n_sites": 19,
+      "panel_class": "native",
+      "fingerprint": "8b783cc25f4a50ef",
+      "source_rev": "niome-native-2026-05-21-v1",
+      "configured_strategy": "v5_style"
+    }
+  },
+  "fleet_duplicate_panels": [
+    {
+      "fingerprint": "8b783cc25f4a50ef",
+      "uids": [
+        71,
+        9,
+        139,
+        209,
+        217,
+        97,
+        99,
+        226,
+        235,
+        50,
+        124
+      ],
+      "n_sites": 19
+    },
+    {
+      "fingerprint": "7126ebfcaaeee088",
+      "uids": [
+        155,
+        38
+      ],
+      "n_sites": 18
+    },
+    {
+      "fingerprint": "a2c0c8bffb6846f4",
+      "uids": [
+        92,
+        225,
+        36
+      ],
+      "n_sites": 14
+    }
+  ],
+  "n_miners_scored": 247,
+  "recommended_strategy": "v10"
+}
