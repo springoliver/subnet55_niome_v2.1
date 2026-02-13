@@ -6,8 +6,8 @@
     "region": "chr7:117480000-117670000"
   },
   "input": {
-    "read1_fastq": "https://niome-data-bucket.s3.amazonaws.com/crt/reads_1.fq?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQBOQGOVHVEWR53JS%2F20260525%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260525T092556Z&X-Amz-Expires=14400&X-Amz-SignedHeaders=host&X-Amz-Signature=ad6f2514b72ce2a7c367f58f08a2bdcd4d497bf37d852cce09c9f7a80149a30f",
-    "read2_fastq": "https://niome-data-bucket.s3.amazonaws.com/crt/reads_2.fq?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQBOQGOVHVEWR53JS%2F20260525%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260525T092557Z&X-Amz-Expires=14400&X-Amz-SignedHeaders=host&X-Amz-Signature=e123e9c1332982f9061939e80c70b607cab69195b54f9b3ffbf912907206004e"
+    "read1_fastq": "https://niome-data-bucket.s3.amazonaws.com/crt/reads_1.fq?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQBOQGOVHVEWR53JS%2F20260525%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260525T115959Z&X-Amz-Expires=14400&X-Amz-SignedHeaders=host&X-Amz-Signature=394362ef0d936e8f5011b3a95e8cbff66dfe4f7e7627481173802568c6fe2dac",
+    "read2_fastq": "https://niome-data-bucket.s3.amazonaws.com/crt/reads_2.fq?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQBOQGOVHVEWR53JS%2F20260525%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260525T115959Z&X-Amz-Expires=14400&X-Amz-SignedHeaders=host&X-Amz-Signature=21e27c8af2510a13381cbb0eae20ed4a631cd23dc6aa132fc2a8b789580f4d49"
   },
   "output_spec": {
     "format": "vcf",
@@ -23,7 +23,7 @@
       "SAMPLE"
     ]
   },
-  "task_id": "e7e96166-7fc9-4245-9969-5f2f646c30db",
+  "task_id": "d6dbf7ce-3e40-415b-b036-d04cd6d1c7da",
   "type": "cftr_variant_calling",
   "version": "2.1"
 }
