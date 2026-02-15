@@ -37,13 +37,16 @@ def _download(url: str, dst: str) -> str:
 
 
 def _load_local_ground_truth(
-    work_dir: str, task_id: Optional[str] = None
+    work_dir: str,
+    task_id: Optional[str] = None,
+    read1_url: str = "",
+    read2_url: str = "",
 ) -> Optional[GroundTruth]:
     vcf = os.environ.get("NIOME_TRUTH_VCF", "").strip()
     ann = os.environ.get("NIOME_TRUTH_ANNOTATIONS", "").strip()
     ref = os.environ.get("NIOME_TRUTH_REF", "").strip()
     if (not vcf or not os.path.isfile(vcf)) and task_id:
-        found = find_task_truth(task_id)
+        found = find_task_truth(task_id, read1_url=read1_url, read2_url=read2_url)
         if found:
             vcf, ann = found
             bt.logging.info(
@@ -68,7 +71,9 @@ def _resolve_ground_truth(
     wallet: Optional["bt.wallet"] = None,
     netuid: int = 55,
 ) -> Optional[GroundTruth]:
-    local = _load_local_ground_truth(work_dir, task.task_id)
+    r1 = getattr(task.input, "read1_fastq", "") or ""
+    r2 = getattr(task.input, "read2_fastq", "") or ""
+    local = _load_local_ground_truth(work_dir, task.task_id, read1_url=r1, read2_url=r2)
     if local:
         bt.logging.info("[competitive] using NIOME_TRUTH_VCF local truth")
         return local

@@ -50,6 +50,8 @@ _UCSC_CHR7_GZ = (
 _REGION_PAD = 5000
 
 _INDELS_20_SUPPORTED: Optional[bool] = None
+
+
 _BCFTOOLS_VERSION_LOGGED = False
 
 

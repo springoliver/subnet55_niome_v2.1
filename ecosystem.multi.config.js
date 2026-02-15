@@ -1,11 +1,11 @@
 /**
  * NIOME multi-miner PM2 — pang8512 wallet
  *
- *  miner-1  miner-pang     → v10
- *  miner-2  miner-sn55     → high_recall
- *  miner-3  miner-pang01   → v5_style
- *  miner-4  miner-pang02   → high_recall
- *  miner-5  miner-pang05   → win (truth when available)
+ *  miner-1  miner-pang    →36   → v10
+ *  miner-2  miner-sn55    →92   → high_recall
+ *  miner-3  miner-pang01  →225  → v10
+ *  miner-4  miner-pang02  →38   → high_recall
+ *  miner-5  miner-pang05  →155  → win (truth when available)
  *
  * Deploy:
  *   cd /path/to/subnet-niome && git pull
@@ -118,7 +118,7 @@ module.exports = {
       name: "miner-3",
       hotkey: "miner-pang01",
       port: 8093,
-      strategy: "v5_style",
+      strategy: "v10",
     }),
     minerApp({
       name: "miner-4",

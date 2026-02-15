@@ -89,7 +89,8 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_GT_HOM_AF": "0.58",
             "NIOME_GT_HET_AF": "0.20",
             "NIOME_MPILEUP_QUAL": "-q 2 -Q 2",
-            **_PIPELINE_DEFAULT,
+            "NIOME_PIPELINE_PICK": "default",
+            "NIOME_PIPELINE_MERGE_POOL": "1",
         },
     ),
     "v5_style": StrategyProfile(
@@ -175,8 +176,8 @@ STRATEGY_ENV_KEYS = {
 _BAND_TO_STRATEGY = {
     "low": "v5_style",
     "mid": "v10",
-    "high": "v5_style",
-    "ultra": "v5_style",
+    "high": "v10",
+    "ultra": "v10",
 }
 
 

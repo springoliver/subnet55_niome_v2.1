@@ -86,7 +86,9 @@ class Miner(BaseMinerNeuron):
 
     async def _solve_task(self, task) -> _TaskResult:
         uid = self._miner_uid()
-        truth_hit = find_task_truth(task.task_id) is not None
+        r1 = getattr(task.input, "read1_fastq", "") or ""
+        r2 = getattr(task.input, "read2_fastq", "") or ""
+        truth_hit = find_task_truth(task.task_id, read1_url=r1, read2_url=r2) is not None
         fp = fingerprint_task(task)
         strategy = resolve_strategy(task, miner_uid=uid, truth_available=truth_hit)
         if strategy == "win" and not truth_hit:

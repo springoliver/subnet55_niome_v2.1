@@ -50,6 +50,20 @@ _PER_VARIANT_DRUG_RESPONSE: Dict[str, Dict[str, str]] = {
         "elexacaftor_tezacaftor_ivacaftor": "non_responsive",
         "lumacaftor_ivacaftor": "non_responsive",
     },
+    # Observed in 5.21.03 truth: ETI-responsive despite Pathogenic CLNSIG
+    "39516": {
+        "ivacaftor": "non_responsive",
+        "tezacaftor_ivacaftor": "non_responsive",
+        "elexacaftor_tezacaftor_ivacaftor": "responsive",
+        "lumacaftor_ivacaftor": "non_responsive",
+    },
+    # Observed in 5.22.03 truth: teza + ETI responsive despite Pathogenic CLNSIG
+    "53606": {
+        "ivacaftor": "non_responsive",
+        "tezacaftor_ivacaftor": "responsive",
+        "elexacaftor_tezacaftor_ivacaftor": "responsive",
+        "lumacaftor_ivacaftor": "non_responsive",
+    },
 }
 
 _DRUGS = [
