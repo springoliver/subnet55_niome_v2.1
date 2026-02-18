@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "built_at": "2026-05-24T16:21:09.242770+00:00",
+  "built_at": "2026-05-25T18:00:00.000000+00:00",
   "results_root": "C:\\Users\\Administrator\\Videos\\subnets\\subnet-niome\\Results",
-  "n_rounds": 26,
+  "n_rounds": 28,
   "n_with_truth": 4,
   "truth_tasks_indexed": 5,
   "rounds": [
@@ -140,6 +140,26 @@
       "has_truth": false,
       "truth_n": 0,
       "top_n": 25
+    },
+    {
+      "key": "5.25.01",
+      "path": "5.25.01",
+      "task_id": "d6dbf7ce-3e40-415b-b036-d04cd6d1c7da",
+      "band": "high",
+      "has_truth": false,
+      "truth_n": 0,
+      "top_n": 25,
+      "note": "crt/reads dataset — truth from 5.21.03 via URL match; top uid=104 vcf=0.8073 ann=1.0 final=0.8651"
+    },
+    {
+      "key": "5.25.02",
+      "path": "5.25.02",
+      "task_id": "aef0c8af-717f-4085-b935-e31d47076de7",
+      "band": "high",
+      "has_truth": false,
+      "truth_n": 0,
+      "top_n": 25,
+      "note": "crt/reads dataset — truth from 5.21.03 via URL match; top uid=104 vcf=0.8658 ann=1.0 final=0.9060"
     },
     {
       "key": "old_version_result__5.14.02",

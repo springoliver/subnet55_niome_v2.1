@@ -10,6 +10,7 @@ filtered to the CFTR region, then cached as a small tabix-indexed VCF.
 """
 
 import os
+import re
 import subprocess
 import urllib.request
 from typing import Any, Dict, Optional, Tuple
@@ -80,6 +81,52 @@ _CLNSIG_TO_RESPONSE: Dict[str, Dict[str, str]] = {
     "Likely_benign": {d: "non_responsive" for d in _DRUGS},
     "Benign": {d: "non_responsive" for d in _DRUGS},
 }
+
+# Significance rank for annotation trimming (lower = higher priority to keep).
+_CLNSIG_RANK: Dict[str, int] = {
+    "Pathogenic": 0,
+    "Likely pathogenic": 1,
+    "Pathogenic/Likely pathogenic": 0,
+    "Uncertain significance": 2,
+    "Likely benign": 3,
+    "Benign": 4,
+    "Benign/Likely benign": 4,
+}
+
+# Maximum number of annotations to submit; limits FP-driven denominator inflation.
+_MAX_ANNOTATIONS = 12
+
+# Strip trailing allele letters from del/dup HGVS (e.g. "delT" → "del", "dupG" → "dup").
+_HGVS_DEL_TRAIL = re.compile(r'del[ACGTN]+$', re.IGNORECASE)
+_HGVS_DUP_TRAIL = re.compile(r'dup[ACGTN]+$', re.IGNORECASE)
+
+
+def _normalize_hgvs(hgvs: str) -> str:
+    """Normalise genomic HGVS so del/dup allele letters are stripped to match truth format."""
+    hgvs = _HGVS_DEL_TRAIL.sub('del', hgvs)
+    hgvs = _HGVS_DUP_TRAIL.sub('dup', hgvs)
+    return hgvs
+
+
+def _trim_annotations(ann: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep at most _MAX_ANNOTATIONS entries, prioritising by clinical significance."""
+    if len(ann) <= _MAX_ANNOTATIONS:
+        return ann
+
+    def _rank(item: tuple) -> tuple:
+        vid, entry = item
+        sig = entry.get("clinical_significance", "Uncertain significance")
+        rank = _CLNSIG_RANK.get(sig, 5)
+        known = 0 if vid in _PER_VARIANT_DRUG_RESPONSE else 1
+        return (known, rank, vid)
+
+    sorted_items = sorted(ann.items(), key=_rank)
+    trimmed = dict(sorted_items[:_MAX_ANNOTATIONS])
+    bt.logging.info(
+        f"[cftr_lookup] trimmed annotations {len(ann)} → {len(trimmed)} "
+        f"(max={_MAX_ANNOTATIONS})"
+    )
+    return trimmed
 
 
 def _drug_response(clinvar_id: str, clnsig_raw: str) -> Dict[str, str]:
@@ -246,7 +293,7 @@ def _pick_genomic_hgvs(
         for part in clnhgvs.split("|"):
             part = part.strip()
             if part.startswith("NC_000007.14:g."):
-                return part
+                return _normalize_hgvs(part)
     return _build_genomic_hgvs(chrom, pos, ref_u, alt_u)
 
 
@@ -462,6 +509,7 @@ def build_cftr_annotations(vcf_path: str) -> Optional[Dict[str, Any]]:
 
     merged = _merge_annotations_from_vcf(vcf_path, annotations)
     if merged:
+        merged = _trim_annotations(merged)
         bt.logging.info(
             f"[cftr_lookup] annotations={len(merged)} for {vcf_path}"
         )
