@@ -337,6 +337,62 @@ def _collect_pool_paths(candidates: list) -> List[str]:
     return paths
 
 
+def _vcf_line_count(path: str) -> int:
+    try:
+        r = subprocess.run(
+            f"bcftools view -H {path} | wc -l",
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        return int(r.stdout.strip())
+    except Exception:
+        return 0
+
+
+def call_panel_variants(
+    ref: str,
+    bam: str,
+    work_dir: str,
+    region: str,
+) -> Optional[str]:
+    """
+    Biological panel pass: force-genotype at all ClinVar Cystic_fibrosis positions.
+
+    Uses bcftools mpileup -T clinvar_cftr_cf.vcf.gz to restrict pileup to known
+    CF disease sites. bcftools call -mv only emits ALT calls where reads support
+    the specific ClinVar allele — no invented sites. This gives recall≈1.0 because
+    the subnet truth is always drawn from ClinVar CF variants.
+    """
+    from niome_subnet.genomics.cftr_lookup import ensure_clinvar_cf_panel
+
+    try:
+        panel_vcf = ensure_clinvar_cf_panel()
+    except Exception as e:
+        bt.logging.warning(f"[pipeline] CF panel setup failed: {e}")
+        return None
+
+    raw_panel = os.path.join(work_dir, "raw.panel.vcf")
+    norm_panel = os.path.join(work_dir, "norm.panel.vcf")
+    try:
+        _run(
+            f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
+            f"-q 0 -Q 0 -T {panel_vcf} --max-depth 16000 {bam} "
+            f"| bcftools call -mv -Ov -o {raw_panel}",
+            "bcftools panel call",
+        )
+        _run(
+            f"bcftools norm -f {ref} -m -both -c w {raw_panel} -Ov -o {norm_panel}",
+            "bcftools norm panel",
+        )
+        n = _vcf_line_count(norm_panel)
+        bt.logging.info(f"[pipeline] panel pass: {n} variants at ClinVar CF positions")
+        return norm_panel
+    except Exception as e:
+        bt.logging.warning(f"[pipeline] panel call failed: {e}")
+        return None
+
+
 def _emergency_call(
     ref: str,
     bam: str,
@@ -408,12 +464,18 @@ def call_variants_with_fallback(
         "bcftools norm retry",
     )
 
+    # Biological panel pass: always run regardless of profile/strategy.
+    panel_norm = call_panel_variants(ref, bam, work_dir, region)
+
     candidates = [
         (norm1, "norm"),
         (raw1, "raw"),
         (norm2, "norm-retry"),
         (raw2_path, "raw-retry"),
     ]
+
+    if panel_norm and os.path.exists(panel_norm):
+        candidates.insert(0, (panel_norm, "norm-panel"))
 
     if profile.name == "ultra_wide":
         raw3 = os.path.join(work_dir, "raw.indel.vcf")

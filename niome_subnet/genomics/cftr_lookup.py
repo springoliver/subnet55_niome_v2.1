@@ -29,6 +29,10 @@ CLINVAR_VCF_URL = (
 )
 CLINVAR_TBI_URL = CLINVAR_VCF_URL + ".tbi"
 
+# Subset of CFTR ClinVar filtered to Cystic_fibrosis disease entries — used as
+# the targets file for biological panel force-genotyping.
+CLINVAR_CF_PANEL_VCF = os.path.join(CLINVAR_DIR, "clinvar_cftr_cf.vcf.gz")
+
 CFTR_REGION = "chr7:117430000-117720000"
 _CFTR_REGION_NOCHR = "7:117430000-117720000"
 
@@ -263,6 +267,54 @@ def ensure_clinvar_db() -> str:
 
     bt.logging.info("ClinVar CFTR database ready.")
     return CLINVAR_CFTR_VCF
+
+
+def ensure_clinvar_cf_panel() -> str:
+    """
+    Build (once) a ClinVar VCF restricted to Cystic_fibrosis disease entries.
+    Used as -T targets file for biological panel force-genotyping:
+      bcftools mpileup -T clinvar_cftr_cf.vcf.gz
+    Returns path to the tabix-indexed .vcf.gz.
+    """
+    if os.path.exists(CLINVAR_CF_PANEL_VCF) and os.path.exists(CLINVAR_CF_PANEL_VCF + ".tbi"):
+        if _vcf_variant_count(CLINVAR_CF_PANEL_VCF) > 0:
+            return CLINVAR_CF_PANEL_VCF
+        for f in [CLINVAR_CF_PANEL_VCF, CLINVAR_CF_PANEL_VCF + ".tbi"]:
+            if os.path.exists(f):
+                os.remove(f)
+
+    base = ensure_clinvar_db()
+
+    # Filter to Cystic_fibrosis disease name (CLNDN field).
+    # Fallback to Pathogenic/Likely_pathogenic if CLNDN filter fails.
+    success = False
+    for expr in [
+        'CLNDN~"Cystic_fibrosis"',
+        'INFO/CLNDN~"Cystic_fibrosis"',
+        'CLNSIG~"Pathogenic"',
+    ]:
+        r = subprocess.run(
+            f"bcftools view -i '{expr}' {base} -Oz -o {CLINVAR_CF_PANEL_VCF}",
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        if r.returncode == 0 and _vcf_variant_count(CLINVAR_CF_PANEL_VCF) > 0:
+            success = True
+            bt.logging.info(
+                f"[cftr_lookup] CF panel filter expr='{expr}'"
+            )
+            break
+        if os.path.exists(CLINVAR_CF_PANEL_VCF):
+            os.remove(CLINVAR_CF_PANEL_VCF)
+
+    if not success:
+        raise RuntimeError("Failed to build ClinVar CF panel VCF")
+
+    _index_vcf_gz(CLINVAR_CF_PANEL_VCF)
+    n = _vcf_variant_count(CLINVAR_CF_PANEL_VCF)
+    bt.logging.info(f"[cftr_lookup] CF panel ready: {n} Cystic_fibrosis positions")
+    return CLINVAR_CF_PANEL_VCF
 
 
 def _parse_info(info_str: str) -> Dict[str, str]:
