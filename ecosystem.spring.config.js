@@ -193,7 +193,7 @@ module.exports = {
       hotkey: "spring09",
       uid: 217,
       port: 8109,
-      strategy: "v10",
+      strategy: "high_recall",
     }),
   ],
 };
