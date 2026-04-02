@@ -106,13 +106,23 @@ module.exports = {
       name: "miner-1",
       hotkey: "miner-pang",
       port: 8091,
-      strategy: "v10",
+      strategy: "win",
+      extraEnv: {
+        NIOME_WIN_MODE: "1",
+        NIOME_VCF_MINIMAL: "1",
+        NIOME_VCF_DOT_ID: "1",
+      },
     }),
     minerApp({
       name: "miner-2",
       hotkey: "miner-sn55",
       port: 8092,
-      strategy: "high_recall",
+      strategy: "win",
+      extraEnv: {
+        NIOME_WIN_MODE: "1",
+        NIOME_VCF_MINIMAL: "1",
+        NIOME_VCF_DOT_ID: "1",
+      },
     }),
     minerApp({
       name: "miner-3",
@@ -129,7 +139,12 @@ module.exports = {
       name: "miner-4",
       hotkey: "miner-pang02",
       port: 8094,
-      strategy: "high_recall",
+      strategy: "win",
+      extraEnv: {
+        NIOME_WIN_MODE: "1",
+        NIOME_VCF_MINIMAL: "1",
+        NIOME_VCF_DOT_ID: "1",
+      },
     }),
     minerApp({
       name: "miner-5",

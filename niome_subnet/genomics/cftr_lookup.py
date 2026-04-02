@@ -271,14 +271,42 @@ def ensure_clinvar_db() -> str:
 
 def ensure_clinvar_cf_panel() -> str:
     """
-    Return the full ClinVar CFTR region VCF as the panel targets file.
-
-    No disease-name filter. Different task rounds use different patient samples
-    whose variants may come from any ClinVar CFTR entry (not just Cystic_fibrosis).
-    Force-genotyping at ALL ~500 ClinVar CFTR positions maximises recall for any
-    patient, regardless of which clinical subset their variants fall under.
+    ClinVar CFTR VCF filtered to Cystic_fibrosis entries — panel targets file.
+    Used as -T targets for bcftools mpileup to force-genotype at known CF positions.
+    Returns path to tabix-indexed .vcf.gz.
     """
-    return ensure_clinvar_db()
+    if os.path.exists(CLINVAR_CF_PANEL_VCF) and os.path.exists(CLINVAR_CF_PANEL_VCF + ".tbi"):
+        if _vcf_variant_count(CLINVAR_CF_PANEL_VCF) > 0:
+            return CLINVAR_CF_PANEL_VCF
+        for f in [CLINVAR_CF_PANEL_VCF, CLINVAR_CF_PANEL_VCF + ".tbi"]:
+            if os.path.exists(f):
+                os.remove(f)
+
+    base = ensure_clinvar_db()
+    success = False
+    for expr in [
+        'CLNDN~"Cystic_fibrosis"',
+        'INFO/CLNDN~"Cystic_fibrosis"',
+        'CLNSIG~"Pathogenic"',
+    ]:
+        r = subprocess.run(
+            f"bcftools view -i '{expr}' {base} -Oz -o {CLINVAR_CF_PANEL_VCF}",
+            shell=True, capture_output=True, text=True,
+        )
+        if r.returncode == 0 and _vcf_variant_count(CLINVAR_CF_PANEL_VCF) > 0:
+            success = True
+            bt.logging.info(f"[cftr_lookup] CF panel filter='{expr}'")
+            break
+        if os.path.exists(CLINVAR_CF_PANEL_VCF):
+            os.remove(CLINVAR_CF_PANEL_VCF)
+
+    if not success:
+        raise RuntimeError("Failed to build ClinVar CF panel VCF")
+
+    _index_vcf_gz(CLINVAR_CF_PANEL_VCF)
+    n = _vcf_variant_count(CLINVAR_CF_PANEL_VCF)
+    bt.logging.info(f"[cftr_lookup] CF panel ready: {n} positions")
+    return CLINVAR_CF_PANEL_VCF
 
 
 def _parse_info(info_str: str) -> Dict[str, str]:
