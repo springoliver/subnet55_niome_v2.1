@@ -215,5 +215,17 @@ module.exports = {
         NIOME_VCF_DOT_ID: "1",
       },
     }),
+    minerApp({
+      name: "dragon",
+      hotkey: "dragon",
+      uid: 71,
+      port: 8106,
+      strategy: "win",
+      extraEnv: {
+        NIOME_WIN_MODE: "1",
+        NIOME_VCF_MINIMAL: "1",
+        NIOME_VCF_DOT_ID: "1",
+      },
+    }),
   ],
 };
