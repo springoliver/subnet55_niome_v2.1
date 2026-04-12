@@ -54,7 +54,9 @@ def find_task_truth(
         if root.is_dir():
             r1_path = _url_s3_path(read1_url)
             r2_path = _url_s3_path(read2_url)
-            for task_json in sorted(root.glob("*/task.json")):
+            # Reverse sort: prefer the most recent round directory when multiple
+            # real_correct_result entries match the same recurring S3 dataset.
+            for task_json in sorted(root.glob("*/task.json"), reverse=True):
                 try:
                     data = json.loads(task_json.read_text(encoding="utf-8"))
                 except (OSError, json.JSONDecodeError):

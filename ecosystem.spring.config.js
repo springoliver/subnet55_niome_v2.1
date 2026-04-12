@@ -1,7 +1,7 @@
 /**
  * NIOME spring wallet fleet (Vultr) — use: pm2 start ecosystem.spring.config.js
  *
- *  ONE STRATEGY: win (truth when available, CF panel fallback)
+ *  ONE STRATEGY: panel (ClinVar CF force-genotype, AF-filtered, no stored-truth)
  *  springhot → 141  spring02 → 99  spring05 → 226  spring06 → 124
  *  spring07  → 9    spring08 → 97  spring09 → 217
  *  (spring01/50, spring03/209, spring04/235 dead — deregistered)
@@ -59,6 +59,7 @@ function minerApp({
   uid,
   port,
   strategy,
+  walletName = "spring",
   extraEnv = {},
   forceValidatorPermit = false,
 }) {
@@ -70,7 +71,7 @@ function minerApp({
     "--subtensor.network",
     "finney",
     "--wallet.name",
-    "spring",
+    walletName,
     "--wallet.hotkey",
     hotkey,
     "--axon.port",
@@ -109,10 +110,9 @@ module.exports = {
       hotkey: "springhot",
       uid: 141,
       port: 8105,
-      strategy: "win",
+      strategy: "panel",
       forceValidatorPermit: true,
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -122,17 +122,16 @@ module.exports = {
     //   hotkey: "spring01",
     //   uid: 50,
     //   port: 8101,
-    //   strategy: "high_recall",
+    //   strategy: "panel",
     // }),
     minerApp({
       name: "spring02",
       hotkey: "spring02",
       uid: 99,
       port: 8112,
-      strategy: "win",
+      strategy: "panel",
       forceValidatorPermit: true,
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -142,7 +141,7 @@ module.exports = {
     //   hotkey: "spring03",
     //   uid: 209,
     //   port: 8103,
-    //   strategy: "high_recall",
+    //   strategy: "panel",
     //   forceValidatorPermit: true,
     // }),
     // minerApp({
@@ -150,7 +149,7 @@ module.exports = {
     //   hotkey: "spring04",
     //   uid: 235,
     //   port: 8104,
-    //   strategy: "win",
+    //   strategy: "panel",
     //   forceValidatorPermit: true,
     // }),
     minerApp({
@@ -158,9 +157,8 @@ module.exports = {
       hotkey: "spring05",
       uid: 226,
       port: 8107,
-      strategy: "win",
+      strategy: "panel",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -170,10 +168,9 @@ module.exports = {
       hotkey: "spring06",
       uid: 124,
       port: 8110,
-      strategy: "win",
+      strategy: "panel",
       forceValidatorPermit: true,
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -183,9 +180,8 @@ module.exports = {
       hotkey: "spring07",
       uid: 9,
       port: 8111,
-      strategy: "win",
+      strategy: "panel",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -195,10 +191,9 @@ module.exports = {
       hotkey: "spring08",
       uid: 97,
       port: 8108,
-      strategy: "win",
+      strategy: "panel",
       forceValidatorPermit: true,
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -208,9 +203,8 @@ module.exports = {
       hotkey: "spring09",
       uid: 217,
       port: 8109,
-      strategy: "win",
+      strategy: "panel",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -220,9 +214,9 @@ module.exports = {
       hotkey: "dragon",
       uid: 71,
       port: 8106,
-      strategy: "win",
+      strategy: "panel",
+      walletName: "dragon",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },

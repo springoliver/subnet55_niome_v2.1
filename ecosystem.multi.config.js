@@ -1,11 +1,12 @@
 /**
  * NIOME multi-miner PM2 — pang8512 wallet
  *
- *  miner-1  miner-pang    →36   → v10
- *  miner-2  miner-sn55    →92   → high_recall
- *  miner-3  miner-pang01  →225  → win (truth when available)
- *  miner-4  miner-pang02  →38   → high_recall
- *  miner-5  miner-pang03  →155  → win (truth when available)
+ *  ONE STRATEGY: panel (ClinVar CF force-genotype, AF-filtered, no stored-truth)
+ *  miner-1  miner-pang    →36
+ *  miner-2  miner-sn55    →92
+ *  miner-3  miner-pang01  →225
+ *  miner-4  miner-pang02  →38
+ *  miner-5  miner-pang03  →155
  *
  * Deploy:
  *   cd /path/to/subnet-niome && git pull
@@ -106,9 +107,8 @@ module.exports = {
       name: "miner-1",
       hotkey: "miner-pang",
       port: 8091,
-      strategy: "win",
+      strategy: "panel",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -117,9 +117,8 @@ module.exports = {
       name: "miner-2",
       hotkey: "miner-sn55",
       port: 8092,
-      strategy: "win",
+      strategy: "panel",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -128,9 +127,8 @@ module.exports = {
       name: "miner-3",
       hotkey: "miner-pang01",
       port: 8093,
-      strategy: "win",
+      strategy: "panel",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -139,9 +137,8 @@ module.exports = {
       name: "miner-4",
       hotkey: "miner-pang02",
       port: 8094,
-      strategy: "win",
+      strategy: "panel",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },
@@ -150,9 +147,8 @@ module.exports = {
       name: "miner-5",
       hotkey: "miner-pang03",
       port: 8095,
-      strategy: "win",
+      strategy: "panel",
       extraEnv: {
-        NIOME_WIN_MODE: "1",
         NIOME_VCF_MINIMAL: "1",
         NIOME_VCF_DOT_ID: "1",
       },

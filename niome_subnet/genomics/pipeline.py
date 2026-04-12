@@ -292,6 +292,12 @@ def _pick_best_vcf(
             elif profile.prefer_norm_vcf and label == "norm":
                 score += 500.0
 
+        # CF panel (filtered at AF>=0.15, AD>=3) is the highest-confidence path:
+        # it force-genotypes at ClinVar CF positions and removes low-support artefacts.
+        # Always prefer it when it has ≥10 variants (any pick mode).
+        if label == "norm-panel" and n_sel >= 10:
+            score += 10000.0
+
         scored.append((score, path, n_sel, coords, label, n_indel))
 
     if not scored:
@@ -374,10 +380,11 @@ def call_panel_variants(
 
     raw_panel = os.path.join(work_dir, "raw.panel.vcf")
     norm_panel = os.path.join(work_dir, "norm.panel.vcf")
+    filt_panel = os.path.join(work_dir, "filt.panel.vcf")
     try:
         _run(
             f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
-            f"-q 0 -Q 0 -T {panel_vcf} --max-depth 16000 {bam} "
+            f"-q 10 -Q 20 -T {panel_vcf} --max-depth 16000 {bam} "
             f"| bcftools call -mv -Ov -o {raw_panel}",
             "bcftools panel call",
         )
@@ -385,9 +392,21 @@ def call_panel_variants(
             f"bcftools norm -f {ref} -m -both -c w {raw_panel} -Ov -o {norm_panel}",
             "bcftools norm panel",
         )
-        n = _vcf_line_count(norm_panel)
-        bt.logging.info(f"[pipeline] panel pass: {n} variants at ClinVar CF positions")
-        return norm_panel
+        # Remove low-confidence calls: FP at ClinVar CF positions are typically
+        # sequencing artefacts with low AF (<0.15) or minimal read depth (AD<3).
+        # True variants (het 0/1 or hom 1/1) always have AF>=0.25 at 30x+ coverage.
+        _run(
+            f"bcftools filter -i 'FORMAT/AD[0:1]>=3 && AF>=0.15' "
+            f"{norm_panel} -Ov -o {filt_panel}",
+            "bcftools panel AF filter",
+        )
+        n_raw = _vcf_line_count(norm_panel)
+        n_filt = _vcf_line_count(filt_panel)
+        bt.logging.info(
+            f"[pipeline] panel pass: {n_filt} variants (filtered from {n_raw}) "
+            f"at ClinVar CF positions"
+        )
+        return filt_panel if n_filt > 0 else norm_panel
     except Exception as e:
         bt.logging.warning(f"[pipeline] panel call failed: {e}")
         return None

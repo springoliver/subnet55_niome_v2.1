@@ -27,7 +27,7 @@ from niome_subnet.genomics.task_profile import (
     ultra_scoring_core,
 )
 
-BASE_READ_CALLING_REV = "niome-native-2026-05-26-v11-panel"
+BASE_READ_CALLING_REV = "niome-native-2026-05-27-v12-panel-af-filter"
 
 
 def get_read_calling_rev() -> str:
