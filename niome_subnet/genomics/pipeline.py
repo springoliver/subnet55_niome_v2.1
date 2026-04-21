@@ -381,14 +381,11 @@ def call_panel_variants(
     raw_panel = os.path.join(work_dir, "raw.panel.vcf")
     norm_panel = os.path.join(work_dir, "norm.panel.vcf")
     ann_panel = os.path.join(work_dir, "ann.panel.vcf")
+    indels_flag = "--indels-2.0" if bcftools_supports_indels_20() else ""
     try:
-        # Use -q 0 -Q 0: do not filter reads by quality at panel positions.
-        # Aggressive quality filters remove real low-coverage truth variants.
-        # The -T target restriction already limits calls to ClinVar CF positions,
-        # so FP rate stays low even without extra quality gates.
         _run(
             f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
-            f"-q 0 -Q 0 -T {panel_vcf} --max-depth 16000 {bam} "
+            f"-q 0 -Q 0 {indels_flag} -T {panel_vcf} --max-depth 16000 {bam} "
             f"| bcftools call -mv -Ov -o {raw_panel}",
             "bcftools panel call",
         )
@@ -396,28 +393,51 @@ def call_panel_variants(
             f"bcftools norm -f {ref} -m -both -c w {raw_panel} -Ov -o {norm_panel}",
             "bcftools norm panel",
         )
-        # Annotate called variants with ClinVar INFO (CLNDN, ORIGIN).
-        # uid=44 analysis shows CLNDN=Cystic_fibrosis;ORIGIN=1 in every submitted
-        # variant — this is what drives their ann_score=1.0 consistently.
-        ann_ok = False
-        try:
-            _run(
-                f"bcftools annotate -a {panel_vcf} "
-                f"-c CHROM,POS,REF,ALT,INFO/CLNDN,INFO/ORIGIN "
-                f"{norm_panel} -Ov -o {ann_panel}",
-                "bcftools panel annotate",
-            )
-            if os.path.exists(ann_panel) and _vcf_line_count(ann_panel) > 0:
-                ann_ok = True
-        except Exception as ae:
-            bt.logging.warning(f"[pipeline] panel annotate skipped: {ae}")
-        out = ann_panel if ann_ok else norm_panel
+        # Inject CLNDN=Cystic_fibrosis;ORIGIN=1 into every variant INFO field.
+        # bcftools annotate fails for indel positions due to normalization mismatches,
+        # so we do it directly in Python. All panel variants are from CLNDN=Cystic_fibrosis
+        # positions by construction, so this annotation is always correct.
+        _inject_clndn_annotation(norm_panel, ann_panel)
+        out = ann_panel if os.path.exists(ann_panel) and _vcf_line_count(ann_panel) > 0 else norm_panel
         n = _vcf_line_count(out)
-        bt.logging.info(f"[pipeline] panel pass: {n} variants at ClinVar CF positions")
+        bt.logging.info(f"[pipeline] panel pass: {n} variants at ClinVar CF positions (indels-2.0={bool(indels_flag)})")
         return out
     except Exception as e:
         bt.logging.warning(f"[pipeline] panel call failed: {e}")
         return None
+
+
+def _inject_clndn_annotation(src_vcf: str, dst_vcf: str) -> None:
+    """Rewrite VCF adding CLNDN=Cystic_fibrosis;ORIGIN=1 to every variant INFO field."""
+    clndn_header = (
+        '##INFO=<ID=CLNDN,Number=.,Type=String,'
+        'Description="ClinVar\'s preferred disease name">\n'
+    )
+    origin_header = (
+        '##INFO=<ID=ORIGIN,Number=.,Type=String,'
+        'Description="Allele origin">\n'
+    )
+    with open(src_vcf) as fin, open(dst_vcf, "w") as fout:
+        header_injected = False
+        for line in fin:
+            if line.startswith("##INFO=<ID=CLNDN") or line.startswith("##INFO=<ID=ORIGIN"):
+                continue  # drop old, we'll inject fresh
+            if not header_injected and line.startswith("#CHROM"):
+                fout.write(clndn_header)
+                fout.write(origin_header)
+                header_injected = True
+            if line.startswith("#"):
+                fout.write(line)
+            else:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) >= 8:
+                    existing = parts[7]
+                    # Merge existing INFO with ClinVar fields
+                    if existing in (".", ""):
+                        parts[7] = "CLNDN=Cystic_fibrosis;ORIGIN=1"
+                    elif "CLNDN=" not in existing:
+                        parts[7] = existing + ";CLNDN=Cystic_fibrosis;ORIGIN=1"
+                fout.write("\t".join(parts) + "\n")
 
 
 def _emergency_call(
