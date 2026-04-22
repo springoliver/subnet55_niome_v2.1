@@ -380,28 +380,35 @@ def call_panel_variants(
 
     raw_panel = os.path.join(work_dir, "raw.panel.vcf")
     norm_panel = os.path.join(work_dir, "norm.panel.vcf")
-    ann_panel = os.path.join(work_dir, "ann.panel.vcf")
+    filt_panel = os.path.join(work_dir, "filt.panel.vcf")
     indels_flag = "--indels-2.0" if bcftools_supports_indels_20() else ""
     try:
+        # -P 1.0 maximises calling sensitivity: emit any site with ALT read support.
+        # -q 0 -Q 0: no read/base quality filters — truth variants at low-AF positions
+        # are lost with quality gates at panel-targeted sites.
         _run(
             f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
             f"-q 0 -Q 0 {indels_flag} -T {panel_vcf} --max-depth 16000 {bam} "
-            f"| bcftools call -mv -Ov -o {raw_panel}",
+            f"| bcftools call -mv -P 1.0 -Ov -o {raw_panel}",
             "bcftools panel call",
         )
         _run(
             f"bcftools norm -f {ref} -m -both -c w {raw_panel} -Ov -o {norm_panel}",
             "bcftools norm panel",
         )
-        # Inject CLNDN=Cystic_fibrosis;ORIGIN=1 into every variant INFO field.
-        # bcftools annotate fails for indel positions due to normalization mismatches,
-        # so we do it directly in Python. All panel variants are from CLNDN=Cystic_fibrosis
-        # positions by construction, so this annotation is always correct.
-        _inject_clndn_annotation(norm_panel, ann_panel)
-        out = ann_panel if os.path.exists(ann_panel) and _vcf_line_count(ann_panel) > 0 else norm_panel
-        n = _vcf_line_count(out)
-        bt.logging.info(f"[pipeline] panel pass: {n} variants at ClinVar CF positions (indels-2.0={bool(indels_flag)})")
-        return out
+        # Filter: require >=2 ALT-supporting reads. AF threshold removed — low-AF true
+        # variants (e.g. 2 reads at 30x = AF 0.07) would otherwise be discarded.
+        _run(
+            f"bcftools filter -i 'FORMAT/AD[0:1]>=2' {norm_panel} -Ov -o {filt_panel}",
+            "bcftools panel AD filter",
+        )
+        n_raw = _vcf_line_count(norm_panel)
+        n_filt = _vcf_line_count(filt_panel)
+        bt.logging.info(
+            f"[pipeline] panel pass: {n_filt}/{n_raw} variants "
+            f"(AD>=2 filter, indels-2.0={bool(indels_flag)})"
+        )
+        return filt_panel if n_filt > 0 else norm_panel
     except Exception as e:
         bt.logging.warning(f"[pipeline] panel call failed: {e}")
         return None

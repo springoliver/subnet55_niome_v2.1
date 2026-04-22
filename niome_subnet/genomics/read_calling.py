@@ -27,7 +27,7 @@ from niome_subnet.genomics.task_profile import (
     ultra_scoring_core,
 )
 
-BASE_READ_CALLING_REV = "niome-native-2026-05-28-v14-clndn-indels2"
+BASE_READ_CALLING_REV = "niome-native-2026-05-28-v15-clndn-p1-ad2"
 
 
 def get_read_calling_rev() -> str:
@@ -279,10 +279,21 @@ def select_read_variants(
 
 def format_vcf(calls: List[ReadCall], clinvar_ids: Dict[Tuple[int, str, str], str]) -> str:
     use_dot_id = os.environ.get("NIOME_VCF_DOT_ID", "1").strip() not in ("0", "false", "no")
-    lines = [
+    # Panel strategy: annotate all variants with CLNDN=Cystic_fibrosis;ORIGIN=1.
+    # All panel calls are at ClinVar CF positions by construction, so this is always correct.
+    use_clndn = os.environ.get("NIOME_ACTIVE_STRATEGY", "").strip() == "panel"
+
+    headers = [
         "##fileformat=VCFv4.2",
         f"##source=niome_miner_{get_read_calling_rev()}",
         f"##contig=<ID=chr7,length={_CHR7_LENGTH}>",
+    ]
+    if use_clndn:
+        headers += [
+            '##INFO=<ID=CLNDN,Number=.,Type=String,Description="ClinVar disease name">',
+            '##INFO=<ID=ORIGIN,Number=.,Type=String,Description="Allele origin">',
+        ]
+    headers += [
         '##INFO=<ID=DP,Number=1,Type=Integer,Description="Depth">',
         '##INFO=<ID=AF,Number=A,Type=Float,Description="Allele fraction">',
         '##FILTER=<ID=PASS,Description="All filters passed">',
@@ -291,6 +302,7 @@ def format_vcf(calls: List[ReadCall], clinvar_ids: Dict[Tuple[int, str, str], st
         '##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths">',
         "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSAMPLE",
     ]
+    lines = headers
 
     minimal = os.environ.get("NIOME_VCF_MINIMAL", "0").strip() in ("1", "true", "yes")
 
@@ -306,9 +318,10 @@ def format_vcf(calls: List[ReadCall], clinvar_ids: Dict[Tuple[int, str, str], st
         out_id = "." if use_dot_id or not vid or vid == "." else vid
         qual_str = f"{call.qual:.3f}" if call.qual > 0 else "."
         if minimal:
+            info = "CLNDN=Cystic_fibrosis;ORIGIN=1" if use_clndn else "."
             lines.append(
                 f"chr7\t{call.pos}\t{out_id}\t{call.ref}\t{call.alt}\t"
-                f"{qual_str}\tPASS\t.\tGT\t{call.gt}"
+                f"{qual_str}\tPASS\t{info}\tGT\t{call.gt}"
             )
             continue
         if call.dp > 0 and call.alt_ad > 0:
@@ -325,6 +338,8 @@ def format_vcf(calls: List[ReadCall], clinvar_ids: Dict[Tuple[int, str, str], st
             info = "."
             fmt = "GT"
             sample = call.gt
+        if use_clndn:
+            info = f"CLNDN=Cystic_fibrosis;ORIGIN=1;{info}" if info != "." else "CLNDN=Cystic_fibrosis;ORIGIN=1"
         lines.append(
             f"chr7\t{call.pos}\t{out_id}\t{call.ref}\t{call.alt}\t{qual_str}\tPASS\t"
             f"{info}\t{fmt}\t{sample}"
