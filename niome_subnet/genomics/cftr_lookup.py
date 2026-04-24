@@ -97,8 +97,9 @@ _CLNSIG_RANK: Dict[str, int] = {
     "Benign/Likely benign": 4,
 }
 
-# Maximum number of annotations to submit; limits FP-driven denominator inflation.
-_MAX_ANNOTATIONS = 12
+# Maximum annotations to submit. Raised to 30 for panel strategy which submits
+# 24-26 all-ClinVar CF variants — a limit of 12 was silently truncating them.
+_MAX_ANNOTATIONS = 30
 
 # Strip trailing allele letters from del/dup HGVS (e.g. "delT" → "del", "dupG" → "dup").
 _HGVS_DEL_TRAIL = re.compile(r'del[ACGTN]+$', re.IGNORECASE)

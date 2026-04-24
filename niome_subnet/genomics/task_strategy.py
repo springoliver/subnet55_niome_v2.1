@@ -124,9 +124,9 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_PIPELINE_MERGE_POOL": "1",
         },
     ),
-    # panel: use ClinVar CF panel (force-genotype at CF positions, AF-filtered) as
-    # the primary output. No win mode, no merge pool. The +10000 scoring bonus in
-    # _pick_best_vcf guarantees the panel result wins when it has >=10 variants.
+    # panel: full CFTR ClinVar (6111 positions) → CF-filter → AD>=2.
+    # The +10000 scoring bonus in _pick_best_vcf ensures panel wins when >=5 variants.
+    # Regular pipeline also runs with -q 0 -Q 0 as a fallback; native recall enabled.
     "panel": StrategyProfile(
         name="panel",
         revision_tag="fleet-panel",
@@ -135,9 +135,9 @@ PROFILES: Dict[str, StrategyProfile] = {
             "NIOME_VCF_MINIMAL": "1",
             "NIOME_VCF_DOT_ID": "1",
             "NIOME_GT_HOM_AF": "0.58",
-            "NIOME_GT_HET_AF": "0.20",
-            "NIOME_NATIVE_RECALL": "0",
-            "NIOME_MPILEUP_QUAL": "-q 10 -Q 20",
+            "NIOME_GT_HET_AF": "0.18",
+            "NIOME_NATIVE_RECALL": "1",
+            "NIOME_MPILEUP_QUAL": "-q 0 -Q 0",
             "NIOME_PIPELINE_PICK": "precision",
             "NIOME_PIPELINE_MERGE_POOL": "0",
         },
