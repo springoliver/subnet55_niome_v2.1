@@ -383,6 +383,7 @@ def call_panel_variants(
         return None
 
     raw_panel = os.path.join(work_dir, "raw.panel.vcf")
+    raw_panel_gz = os.path.join(work_dir, "raw.panel.vcf.gz")
     ann_panel = os.path.join(work_dir, "ann.panel.vcf")
     norm_panel = os.path.join(work_dir, "norm.panel.vcf")
     cf_panel = os.path.join(work_dir, "cf.panel.vcf")
@@ -395,12 +396,20 @@ def call_panel_variants(
             f"| bcftools call -mv -Ov -o {raw_panel}",
             "bcftools panel call (full CFTR)",
         )
-        # Step 2: Annotate with CLNDN from ClinVar — pipe through stdin to avoid
-        # the "not compressed with bgzip" error that occurs with plain VCF input.
+        # Step 2: bgzip + index so bcftools annotate can do tabix lookups,
+        # then annotate with CLNDN/ORIGIN/ID from ClinVar.
         _run(
-            f"bcftools view {raw_panel} "
-            f"| bcftools annotate -a {full_vcf} "
-            f"-c ID,INFO/CLNDN,INFO/ORIGIN -Ov -o {ann_panel}",
+            f"bcftools view -Oz -o {raw_panel_gz} {raw_panel}",
+            "bgzip raw panel",
+        )
+        _run(
+            f"bcftools index -t -f {raw_panel_gz}",
+            "tabix index raw panel",
+        )
+        _run(
+            f"bcftools annotate -a {full_vcf} "
+            f"-c ID,INFO/CLNDN,INFO/ORIGIN "
+            f"{raw_panel_gz} -Ov -o {ann_panel}",
             "bcftools panel annotate CLNDN",
         )
         # Step 3: Normalize
@@ -408,13 +417,13 @@ def call_panel_variants(
             f"bcftools norm -f {ref} -m -both -c w {ann_panel} -Ov -o {norm_panel}",
             "bcftools norm panel",
         )
-        # Step 4: Keep only Cystic_fibrosis variants (matches uid=44's approach)
+        # Step 4: Keep only Cystic_fibrosis variants (matches uid=44's approach).
+        # Fallback to all variants if filter finds nothing.
         r = subprocess.run(
             f"bcftools filter -i 'CLNDN~\"Cystic_fibrosis\"' {norm_panel} -Ov -o {cf_panel}",
             shell=True, capture_output=True, text=True,
         )
         if r.returncode != 0 or _vcf_line_count(cf_panel) == 0:
-            # Fallback: keep all annotated variants if CF filter fails
             import shutil
             shutil.copy2(norm_panel, cf_panel)
         # Step 5: Require >=2 ALT reads
