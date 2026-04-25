@@ -1,0 +1,29 @@
+{
+  "expected_variant_count": 0,
+  "genome_context": {
+    "chromosome": "chr7",
+    "gene": "CFTR",
+    "region": "chr7:117480000-117670000"
+  },
+  "input": {
+    "read1_fastq": "https://niome-data-bucket.s3.amazonaws.com/crt/reads_1.fq?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQBOQGOVHVEWR53JS%2F20260528%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260528T234011Z&X-Amz-Expires=14400&X-Amz-SignedHeaders=host&X-Amz-Signature=a392710cd6275f106015888d972cd7d4bf43020f2c8aee1b5bc55b8b4dd6e4f2",
+    "read2_fastq": "https://niome-data-bucket.s3.amazonaws.com/crt/reads_2.fq?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAQBOQGOVHVEWR53JS%2F20260528%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260528T234011Z&X-Amz-Expires=14400&X-Amz-SignedHeaders=host&X-Amz-Signature=badb4556aa304a788f2b469942592aca34d298c980f43403d0880105c6596da6"
+  },
+  "output_spec": {
+    "format": "vcf",
+    "required_fields": [
+      "CHROM",
+      "POS",
+      "REF",
+      "ALT",
+      "QUAL",
+      "FILTER",
+      "INFO",
+      "FORMAT",
+      "SAMPLE"
+    ]
+  },
+  "task_id": "3330f3f2-973d-416e-9d64-afe6b5dedc41",
+  "type": "cftr_variant_calling",
+  "version": "2.1"
+}
