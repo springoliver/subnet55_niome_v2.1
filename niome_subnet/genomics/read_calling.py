@@ -27,7 +27,7 @@ from niome_subnet.genomics.task_profile import (
     ultra_scoring_core,
 )
 
-BASE_READ_CALLING_REV = "niome-native-2026-05-29-v18-bgzip-annotate"
+BASE_READ_CALLING_REV = "niome-native-2026-05-29-v19-force-allele"
 
 
 def get_read_calling_rev() -> str:

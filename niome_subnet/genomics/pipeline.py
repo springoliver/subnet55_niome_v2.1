@@ -366,78 +366,54 @@ def call_panel_variants(
     region: str,
 ) -> Optional[str]:
     """
-    Biological panel pass: force-genotype at ALL ClinVar CFTR positions (6111),
-    then filter called variants to CLNDN~Cystic_fibrosis.
+    Force-genotype at ClinVar Cystic_fibrosis positions for the SPECIFIC ClinVar alleles.
 
-    uid=44 analysis shows they submit ~24-26 CLNDN=Cystic_fibrosis variants per round,
-    all from ClinVar. Using only the CF-filtered panel (~few hundred positions) gives
-    only 10-12 calls. Using the full 6111-position CFTR panel gives 24-26+ calls.
-    The post-call CLNDN filter keeps only CF variants, matching uid=44's format exactly.
+    Key: -T panel in BOTH mpileup AND call.
+      mpileup -T: restricts pileup to panel positions
+      call    -T: forces bcftools to genotype the SPECIFIC ClinVar REF/ALT allele,
+                  not just any allele with the most reads
+
+    Without -T in call, bcftools picks whatever allele dominates the pileup —
+    which often differs from ClinVar's representation → annotation fails → CF filter
+    removes the variant → only ~5 survive. With -T in call, output alleles match
+    ClinVar exactly → no annotation step needed → all output is already CF-specific.
     """
-    from niome_subnet.genomics.cftr_lookup import ensure_clinvar_db
+    from niome_subnet.genomics.cftr_lookup import ensure_clinvar_cf_panel
 
     try:
-        full_vcf = ensure_clinvar_db()
+        cf_vcf = ensure_clinvar_cf_panel()
     except Exception as e:
-        bt.logging.warning(f"[pipeline] ClinVar DB setup failed: {e}")
+        bt.logging.warning(f"[pipeline] CF panel setup failed: {e}")
         return None
 
     raw_panel = os.path.join(work_dir, "raw.panel.vcf")
-    raw_panel_gz = os.path.join(work_dir, "raw.panel.vcf.gz")
-    ann_panel = os.path.join(work_dir, "ann.panel.vcf")
     norm_panel = os.path.join(work_dir, "norm.panel.vcf")
-    cf_panel = os.path.join(work_dir, "cf.panel.vcf")
     filt_panel = os.path.join(work_dir, "filt.panel.vcf")
     try:
-        # Step 1: Call at all 6111 CFTR ClinVar positions with zero quality filters
+        # Force-genotype at CF positions AND for CF-specific alleles.
+        # -T in mpileup: pileup only at CF positions
+        # -T in call: only report the specific ClinVar allele (not dominant allele)
         _run(
             f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
-            f"-q 0 -Q 0 -T {full_vcf} --max-depth 16000 {bam} "
-            f"| bcftools call -mv -Ov -o {raw_panel}",
-            "bcftools panel call (full CFTR)",
-        )
-        # Step 2: bgzip + index so bcftools annotate can do tabix lookups,
-        # then annotate with CLNDN/ORIGIN/ID from ClinVar.
-        _run(
-            f"bcftools view -Oz -o {raw_panel_gz} {raw_panel}",
-            "bgzip raw panel",
+            f"-q 0 -Q 0 -T {cf_vcf} --max-depth 16000 {bam} "
+            f"| bcftools call -mv -T {cf_vcf} -Ov -o {raw_panel}",
+            "bcftools panel force-genotype",
         )
         _run(
-            f"bcftools index -t -f {raw_panel_gz}",
-            "tabix index raw panel",
-        )
-        _run(
-            f"bcftools annotate -a {full_vcf} "
-            f"-c ID,INFO/CLNDN,INFO/ORIGIN "
-            f"{raw_panel_gz} -Ov -o {ann_panel}",
-            "bcftools panel annotate CLNDN",
-        )
-        # Step 3: Normalize
-        _run(
-            f"bcftools norm -f {ref} -m -both -c w {ann_panel} -Ov -o {norm_panel}",
+            f"bcftools norm -f {ref} -m -both -c w {raw_panel} -Ov -o {norm_panel}",
             "bcftools norm panel",
         )
-        # Step 4: Keep only Cystic_fibrosis variants (matches uid=44's approach).
-        # Fallback to all variants if filter finds nothing.
-        r = subprocess.run(
-            f"bcftools filter -i 'CLNDN~\"Cystic_fibrosis\"' {norm_panel} -Ov -o {cf_panel}",
-            shell=True, capture_output=True, text=True,
-        )
-        if r.returncode != 0 or _vcf_line_count(cf_panel) == 0:
-            import shutil
-            shutil.copy2(norm_panel, cf_panel)
-        # Step 5: Require >=2 ALT reads
         _run(
-            f"bcftools filter -i 'FORMAT/AD[0:1]>=2' {cf_panel} -Ov -o {filt_panel}",
+            f"bcftools filter -i 'FORMAT/AD[0:1]>=2' {norm_panel} -Ov -o {filt_panel}",
             "bcftools panel AD filter",
         )
-        n_cf = _vcf_line_count(cf_panel)
+        n_raw = _vcf_line_count(norm_panel)
         n_filt = _vcf_line_count(filt_panel)
         bt.logging.info(
-            f"[pipeline] panel pass: {n_filt}/{n_cf} variants "
-            f"(full CFTR→CF filter→AD>=2)"
+            f"[pipeline] panel pass: {n_filt}/{n_raw} variants "
+            f"(force-genotype CF alleles, AD>=2)"
         )
-        return filt_panel if n_filt > 0 else cf_panel
+        return filt_panel if n_filt > 0 else norm_panel
     except Exception as e:
         bt.logging.warning(f"[pipeline] panel call failed: {e}")
         return None
