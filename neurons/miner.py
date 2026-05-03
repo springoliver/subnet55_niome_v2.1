@@ -10,6 +10,8 @@ import time
 from dataclasses import dataclass
 from typing import Dict, Optional, Tuple
 
+import json
+
 import bittensor as bt
 
 from niome_subnet.base.miner import BaseMinerNeuron
@@ -17,6 +19,7 @@ from niome_subnet.genomics.cftr_lookup import build_cftr_annotations
 from niome_subnet.genomics.competitive import COMPETITIVE_REV, solve_competitive, win_mode_enabled
 from niome_subnet.genomics.pipeline import run_pipeline
 from niome_subnet.genomics.read_calling import get_read_calling_rev
+from niome_subnet.utils.encryption import encrypt
 from niome_subnet.genomics.task_strategy import (
     apply_strategy_profile,
     fingerprint_task,
@@ -199,8 +202,15 @@ class Miner(BaseMinerNeuron):
             bt.logging.info(
                 f"Task {task.task_id} active_strategy={active} rev={rev}"
             )
-            synapse.vcf_content = result.vcf_content
-            synapse.cftr_annotations = result.cftr_annotations
+            encryption_key = getattr(synapse, "encryption_key", "") or ""
+            if not encryption_key:
+                bt.logging.warning(f"Task {task.task_id}: no encryption_key from validator — response will not be scored")
+            else:
+                synapse.encrypted_vcf = encrypt(encryption_key, result.vcf_content)
+                if result.cftr_annotations:
+                    synapse.encrypted_annotations = encrypt(
+                        encryption_key, json.dumps(result.cftr_annotations)
+                    )
 
             n = sum(
                 1
@@ -214,8 +224,6 @@ class Miner(BaseMinerNeuron):
             )
         except Exception as e:
             bt.logging.error(f"Forward error: {e}", exc_info=True)
-            synapse.vcf_content = None
-            synapse.cftr_annotations = None
 
         return synapse
 

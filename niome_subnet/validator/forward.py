@@ -26,14 +26,16 @@ import niome_subnet.utils.constants as config
 import os
 import time
 import urllib.request
+import shutil
 
 from typing import Optional
 from niome_subnet.genomics.model import GroundTruth, Task, MinerSubmission
 from niome_subnet.genomics.scoring import create_mapping_file, score
 from niome_subnet.protocol import GenomicsTaskSynapse
 from niome_subnet.utils import get_miner_uids
+from niome_subnet.utils.encryption import generate_keypair, decrypt
 
-from niome_subnet.utils.constants import BASE_BLOCK_NUMBER, BURNING_RATE, FETCHING_BLOCK, INTERVAL_BLOCKS, VALIDATION_BLOCK
+from niome_subnet.utils.constants import BASE_BLOCK_NUMBER, BURNING_RATE, FETCHING_BLOCK, INTERVAL_BLOCKS, VALIDATION_BLOCK, WEIGHT_SET_BLOCK
 
 sem = asyncio.Semaphore(config.MINER_QUERY_K)
 
@@ -184,18 +186,19 @@ async def collect_miners_responses(self):
     bt.logging.info("Collecting miners' responses...")
     try:
         os.makedirs("data", exist_ok=True)
-        os.makedirs("vcfs", exist_ok=True)
         miner_uids = get_miner_uids(self)
         np.random.shuffle(miner_uids)
 
         miner_task = await fetch_task(self)
-        bt.logging.info("Fetched task")
+        bt.logging.info(f"Fetched task {miner_task.task_id}")
         task = copy.deepcopy(miner_task)
 
         if self.task_id != task.task_id:
             self.collected_uids = []
-        else:
-            self.task_id = task.task_id
+            shutil.rmtree("vcfs", ignore_errors=True)
+
+        self.task_id = task.task_id
+        os.makedirs("vcfs", exist_ok=True)
 
         # Download task reads
         urllib.request.urlretrieve(task.input.read1_fastq, "data/read_1.fq")
@@ -210,29 +213,48 @@ async def collect_miners_responses(self):
             self.collected_uids.append(uid)
             self.save_state()
 
-            synapse = GenomicsTaskSynapse(task=miner_task, timeout=config.FORWARD_TIMEOUT)
+            # Generate a fresh RSA keypair for this miner so no miner can
+            # re-submit another miner's encrypted response.
+            public_key_pem, private_key_pem = generate_keypair()
+
+            synapse = GenomicsTaskSynapse(
+                task=miner_task,
+                timeout=config.FORWARD_TIMEOUT,
+                encryption_key=public_key_pem,
+            )
 
             axon = self.metagraph.axons[uid]
             if axon.ip == '0.0.0.0':
                 continue
 
             response = await query_axon(self, axon, synapse)
-            if response is None or response.vcf_content is None:
+            if response is None or response.encrypted_vcf is None:
                 continue
 
-            lines = response.vcf_content.splitlines()
+            try:
+                vcf_content = decrypt(private_key_pem, response.encrypted_vcf)
+            except Exception as e:
+                bt.logging.error(f"Failed to decrypt VCF for uid {uid}: {e}")
+                continue
+
+            lines = vcf_content.splitlines()
             variant_count = 0
             for line in lines:
                 if not line.startswith("#"):
                     variant_count += 1
 
             with open(f"vcfs/{uid}.vcf", "w") as f:
-                vcf_content = f"##response_time={response.elapsed_time}\n" + response.vcf_content
-                f.write(vcf_content)
+                vcf_file_content = f"##response_time={response.elapsed_time}\n" + vcf_content
+                f.write(vcf_file_content)
 
-            if response.cftr_annotations is not None:
-                with open(f"vcfs/{uid}.annotations.json", "w") as f:
-                    json.dump(response.cftr_annotations, f)
+            if response.encrypted_annotations is not None:
+                try:
+                    annotations_str = decrypt(private_key_pem, response.encrypted_annotations)
+                    cftr_annotations = json.loads(annotations_str)
+                    with open(f"vcfs/{uid}.annotations.json", "w") as f:
+                        json.dump(cftr_annotations, f)
+                except Exception as e:
+                    bt.logging.error(f"Failed to decrypt annotations for uid {uid}: {e}")
 
         self.is_validating = False
         bt.logging.info("Finished collecting responses.")
@@ -289,7 +311,7 @@ async def run_validation(self):
 
             final_scores.append(miner_score)
 
-        bt.logging.info(f"Scores: {[(score.uid, score.vcf_score, score.annotation_score, score.final_score) for score in final_scores]}")
+        bt.logging.info(f"Scores: {[(score.uid, score.final_score) for score in final_scores]}")
 
         self.collected_uids = []
 
@@ -325,7 +347,7 @@ async def forward(self):
                 self.is_fetching = True
                 self.are_weights_committed = False
                 asyncio.create_task(collect_miners_responses(self))
-            elif blocks == VALIDATION_BLOCK and not self.is_validating:
+            elif blocks >= VALIDATION_BLOCK and blocks < WEIGHT_SET_BLOCK and not self.is_validating:
                 self.is_fetching = False
                 self.is_validating = True
                 asyncio.create_task(run_validation(self))
