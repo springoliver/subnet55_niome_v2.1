@@ -51,6 +51,7 @@ chr7	117499010	.	A	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117499776	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117500227	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117501414	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117501724	.	GC	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117501994	.	G	GC	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117502178	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117502672	.	T	TA	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -65,6 +66,7 @@ chr7	117504339	.	ACAAT	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117504360	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117504400	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117504937	.	A	AT	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117506060	.	C	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117506392	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117506547	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117506949	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -130,6 +132,7 @@ chr7	117526559	.	TC	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117526612	.	C	CG	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117527342	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117528601	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117529788	.	A	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117529848	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117530257	.	G	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117530558	.	A	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -149,6 +152,7 @@ chr7	117530949	.	CTA	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117530950	.	T	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117530951	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117530952	.	TG	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117530953	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117530974	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117530978	.	C	CT	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117531015	.	CT	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -193,6 +197,7 @@ chr7	117534487	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535246	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535248	.	G	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535268	.	CG	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117535285	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535287	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535315	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535324	.	T	TA	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -200,6 +205,7 @@ chr7	117535326	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535329	.	G	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535337	.	C	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535371	.	CT	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117535372	.	T	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535409	.	CA	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535410	.	A	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117535412	.	GT	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -251,6 +257,7 @@ chr7	117541958	.	AT	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117542024	.	A	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117542025	.	C	CA	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117542031	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117542039	.	T	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117542050	.	A	AAT	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117542058	.	TTAACGAC	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117542102	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -298,6 +305,7 @@ chr7	117552276	.	G	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117553650	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117554860	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117556725	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117556992	.	T	TA	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117557119	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117558542	.	AG	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117559403	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -393,6 +401,7 @@ chr7	117587824	.	CTT	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117587827	.	TA	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117587833	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117587851	.	G	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117589303	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117589467	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117589559	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117589611	.	C	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -468,8 +477,10 @@ chr7	117592653	.	T	TA	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117592655	.	AAGGT	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117592658	.	G	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117592659	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117593065	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117593910	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117594850	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117594905	.	T	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117594912	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117594929	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117594934	.	GC	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -597,6 +608,7 @@ chr7	117614682	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117614714	.	G	GT	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117614715	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117614725	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117615493	.	AT	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117616416	.	A	AT	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117616547	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117616608	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -632,6 +644,7 @@ chr7	117627604	.	AT	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117627621	.	GTT	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117627659	.	C	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117627664	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117627671	.	A	AG	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117627671	.	AG	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117627676	.	G	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117627682	.	T	TG	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -659,6 +672,7 @@ chr7	117635714	.	A	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117636720	.	CT	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117637208	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117637525	.	C	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117637774	.	G	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117638403	.	GC	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117640361	.	T	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117640436	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -714,6 +728,7 @@ chr7	117652914	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117652932	.	G	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117652933	.	T	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117653156	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117653465	.	T	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117655375	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117656097	.	T	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117656721	.	T	A	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
@@ -735,6 +750,7 @@ chr7	117664702	.	TG	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117664708	.	A	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117664709	.	G	C	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117664747	.	T	TGGGG	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
+chr7	117664749	.	G	T	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117664754	.	T	G	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117664758	.	T	TC	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
 chr7	117664758	.	T	TCCTA	.	PASS	CLNDN=Cystic_fibrosis;ORIGIN=1
