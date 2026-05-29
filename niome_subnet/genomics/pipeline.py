@@ -393,47 +393,20 @@ def call_panel_variants(
     region: str,
 ) -> Optional[str]:
     """
-    Force-genotype at observed truth variants (164 variants from all collected rounds)
-    + ClinVar CF panel. Uses -T in BOTH mpileup AND call to force the exact allele.
+    Call variants at all 5253 ClinVar Cystic_fibrosis positions.
 
-    The truth panel covers variants that appeared in truth across all rounds, including
-    positions not in ClinVar (e.g. 117598685 A>AG, 117637208 T>C). This gives recall≈1.0
-    since the reads recur across rounds and the same variants are always callable.
+    Uses -T in mpileup only (restricts pileup to CF positions) but NOT in call,
+    so bcftools calls the natural dominant allele at each position. Since all 5253
+    positions are already CLNDN=Cystic_fibrosis, no post-call CF filter is needed.
+    Expected: 24-26 CF variants per round matching uid=44's output.
     """
     from niome_subnet.genomics.cftr_lookup import ensure_clinvar_cf_panel
 
-    # Merge truth panel + ClinVar CF panel for maximum coverage
     try:
-        cf_vcf = ensure_clinvar_cf_panel()
+        panel_vcf = ensure_clinvar_cf_panel()
     except Exception as e:
         bt.logging.warning(f"[pipeline] CF panel setup failed: {e}")
-        cf_vcf = None
-
-    try:
-        truth_vcf = _get_truth_panel_vcf()
-    except Exception as e:
-        bt.logging.warning(f"[pipeline] truth panel setup failed: {e}")
-        truth_vcf = None
-
-    if not cf_vcf and not truth_vcf:
         return None
-
-    # Merge panels into one target file
-    merged_panel = os.path.join(work_dir, "merged.panel.vcf.gz")
-    if cf_vcf and truth_vcf:
-        try:
-            _run(
-                f"bcftools concat -a -D {cf_vcf} {truth_vcf} "
-                f"| bcftools sort -Oz -o {merged_panel}",
-                "merge CF + truth panels",
-            )
-            _run(f"bcftools index -t -f {merged_panel}", "tabix merged panel")
-            panel_vcf = merged_panel
-        except Exception as e:
-            bt.logging.warning(f"[pipeline] panel merge failed, using truth panel: {e}")
-            panel_vcf = truth_vcf
-    else:
-        panel_vcf = truth_vcf or cf_vcf
 
     raw_panel = os.path.join(work_dir, "raw.panel.vcf")
     norm_panel = os.path.join(work_dir, "norm.panel.vcf")
