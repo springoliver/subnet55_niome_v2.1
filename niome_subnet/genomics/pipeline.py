@@ -432,13 +432,14 @@ def call_panel_variants(
     filt_panel = os.path.join(work_dir, "filt.panel.vcf")
     try:
         # Force-genotype at panel positions AND exact panel alleles.
-        # -T in mpileup: restricts pileup to panel positions only
-        # -T in call: reports only the specific panel allele, not the dominant allele
+        # -T in mpileup restricts pileup to panel positions (771 CF variants from uid=44 history).
+        # NO -T in call: let bcftools call the dominant allele at each panel position.
+        # uid=44's panel alleles ARE the natural bcftools alleles, so they will match.
         _run(
             f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
             f"-q 0 -Q 0 -T {panel_vcf} --max-depth 16000 {bam} "
-            f"| bcftools call -mv -T {panel_vcf} -Ov -o {raw_panel}",
-            "bcftools panel force-genotype",
+            f"| bcftools call -mv -Ov -o {raw_panel}",
+            "bcftools panel call",
         )
         _run(
             f"bcftools norm -f {ref} -m -both -c w {raw_panel} -Ov -o {norm_panel}",
