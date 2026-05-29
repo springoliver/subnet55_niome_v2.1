@@ -367,14 +367,22 @@ def _get_truth_panel_vcf() -> str:
     cache_dir = os.path.join(os.path.expanduser("~"), ".niome", "panels")
     os.makedirs(cache_dir, exist_ok=True)
     out_gz = os.path.join(cache_dir, "cftr_truth_panel.vcf.gz")
-    if not os.path.exists(out_gz) or not os.path.exists(out_gz + ".tbi"):
+    # Rebuild cache if source is newer than cache (handles git pull updates)
+    src_mtime = os.path.getmtime(src_vcf) if os.path.exists(src_vcf) else 0
+    cache_mtime = os.path.getmtime(out_gz) if os.path.exists(out_gz) else 0
+    needs_rebuild = (
+        not os.path.exists(out_gz)
+        or not os.path.exists(out_gz + ".tbi")
+        or src_mtime > cache_mtime
+    )
+    if needs_rebuild:
         if not os.path.exists(src_vcf):
             raise FileNotFoundError(f"Truth panel not found: {src_vcf}")
         _run(f"bcftools sort {src_vcf} -Oz -o {out_gz}", "sort+bgzip truth panel")
         _run(f"bcftools index -t -f {out_gz}", "tabix truth panel")
         n = subprocess.run(f"bcftools view -H {out_gz} | wc -l", shell=True,
                           capture_output=True, text=True)
-        bt.logging.info(f"[pipeline] truth panel built: {n.stdout.strip()} variants")
+        bt.logging.info(f"[pipeline] truth panel rebuilt: {n.stdout.strip()} variants")
     return out_gz
 
 
