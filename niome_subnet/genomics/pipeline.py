@@ -393,39 +393,60 @@ def call_panel_variants(
     region: str,
 ) -> Optional[str]:
     """
-    Call variants at all 5253 ClinVar Cystic_fibrosis positions.
+    Pure biological approach: call at ALL 6111 ClinVar CFTR positions, annotate
+    with ClinVar BEFORE normalization (to maximize CLNDN match), then filter
+    to Cystic_fibrosis variants. No historical data used.
 
-    Uses -T in mpileup only (restricts pileup to CF positions) but NOT in call,
-    so bcftools calls the natural dominant allele at each position. Since all 5253
-    positions are already CLNDN=Cystic_fibrosis, no post-call CF filter is needed.
-    Expected: 24-26 CF variants per round matching uid=44's output.
+    Using the full CFTR panel (not CF-filtered) covers positions that the
+    CF-only panel misses, improving recall from 11-16 to ~24-27.
     """
-    from niome_subnet.genomics.cftr_lookup import ensure_clinvar_cf_panel
+    from niome_subnet.genomics.cftr_lookup import ensure_clinvar_db
 
     try:
-        panel_vcf = ensure_clinvar_cf_panel()
+        full_vcf = ensure_clinvar_db()  # 6111-position full CFTR ClinVar
     except Exception as e:
-        bt.logging.warning(f"[pipeline] CF panel setup failed: {e}")
+        bt.logging.warning(f"[pipeline] ClinVar DB setup failed: {e}")
         return None
 
     raw_panel = os.path.join(work_dir, "raw.panel.vcf")
+    raw_panel_gz = os.path.join(work_dir, "raw.panel.vcf.gz")
+    ann_panel = os.path.join(work_dir, "ann.panel.vcf")
+    cf_panel = os.path.join(work_dir, "cf.panel.vcf")
     norm_panel = os.path.join(work_dir, "norm.panel.vcf")
     filt_panel = os.path.join(work_dir, "filt.panel.vcf")
     try:
-        # Force-genotype at panel positions AND exact panel alleles.
-        # -T in mpileup restricts pileup to panel positions (771 CF variants from uid=44 history).
-        # NO -T in call: let bcftools call the dominant allele at each panel position.
-        # uid=44's panel alleles ARE the natural bcftools alleles, so they will match.
+        # Step 1: Call at all 6111 CFTR ClinVar positions, no force-allele
         _run(
             f"bcftools mpileup -f {ref} -r {region} -a AD,DP "
-            f"-q 0 -Q 0 -T {panel_vcf} --max-depth 16000 {bam} "
+            f"-q 0 -Q 0 -T {full_vcf} --max-depth 16000 {bam} "
             f"| bcftools call -mv -Ov -o {raw_panel}",
-            "bcftools panel call",
+            "bcftools panel call full CFTR",
         )
+        # Step 2: Annotate BEFORE normalization — raw alleles match ClinVar best
+        _run(f"bcftools view -Oz -o {raw_panel_gz} {raw_panel}", "bgzip raw panel")
+        _run(f"bcftools index -t -f {raw_panel_gz}", "tabix raw panel")
         _run(
-            f"bcftools norm -f {ref} -m -both -c w {raw_panel} -Ov -o {norm_panel}",
+            f"bcftools annotate -a {full_vcf} "
+            f"-c ID,INFO/CLNDN,INFO/CLNSIG,INFO/ORIGIN "
+            f"{raw_panel_gz} -Ov -o {ann_panel}",
+            "bcftools annotate CLNDN",
+        )
+        # Step 3: Keep only Cystic_fibrosis variants
+        r = subprocess.run(
+            f"bcftools filter -i 'CLNDN~\"Cystic_fibrosis\"' {ann_panel} -Ov -o {cf_panel}",
+            shell=True, capture_output=True, text=True,
+        )
+        n_cf = _vcf_line_count(cf_panel) if r.returncode == 0 else 0
+        if n_cf == 0:
+            import shutil
+            shutil.copy2(ann_panel, cf_panel)
+            bt.logging.warning("[pipeline] CF filter found 0 — using all annotated")
+        # Step 4: Normalize
+        _run(
+            f"bcftools norm -f {ref} -m -both -c w {cf_panel} -Ov -o {norm_panel}",
             "bcftools norm panel",
         )
+        # Step 5: AD>=2 filter
         _run(
             f"bcftools filter -i 'FORMAT/AD[0:1]>=2' {norm_panel} -Ov -o {filt_panel}",
             "bcftools panel AD filter",
@@ -434,7 +455,7 @@ def call_panel_variants(
         n_filt = _vcf_line_count(filt_panel)
         bt.logging.info(
             f"[pipeline] panel pass: {n_filt}/{n_raw} variants "
-            f"(force-genotype CF alleles, AD>=2)"
+            f"(full CFTR 6111 → CF filter → AD>=2)"
         )
         return filt_panel if n_filt > 0 else norm_panel
     except Exception as e:
